@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="page-title">Auction Details — AuctionHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="/index.html" class="nav-brand">
+        <img
+          src="https://static.vecteezy.com/system/resources/previews/022/360/251/large_2x/auction-solid-icons-simple-stock-illustration-stock-vector.jpg"
+          alt="AuctionHub" class="nav-logo">
+        Auction<span>Hub</span>
+      </a>
+
+      <!-- Search in Navbar -->
+      <form method="GET" action="/active_auctions.html" class="nav-search" id="nav-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+          <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+        </svg>
+        <input type="text" name="search" placeholder="Search for unique items..." class="nav-search-input" autocomplete="off">
+      </form>
+
+      <button class="nav-toggle" id="nav-toggle" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+
+      <div class="nav-menu" id="nav-menu">
+        <a href="/active_auctions.html" class="nav-link">
+          <img src="/static/images/MyAuctions.png" alt="" class="nav-icon"> Auctions
+        </a>
+
+        <a href="/create_auction.html" class="nav-link auth-only">
+          <img src="/static/images/Create.png" alt="" class="nav-icon"> Create
+        </a>
+
+        <!-- My Activity dropdown -->
+        <div class="nav-dropdown auth-only" id="activity-dropdown">
+          <button class="nav-link nav-dd-trigger" id="activity-trigger">
+            <img src="/static/images/activity.png" alt="" class="nav-icon"> Activity ▾
+          </button>
+          <div class="nav-dd-menu" id="activity-menu">
+            <a href="/my_auctions.html" class="nav-dd-item">
+              <img src="/static/images/MyAuctions.png" alt="" class="nav-icon"> My Auctions
+            </a>
+            <a href="/my_bids.html" class="nav-dd-item">
+              <img src="/static/images/MyBids.png" alt="" class="nav-icon"> My Bids
+            </a>
+          </div>
+        </div>
+
+        <a href="/faq.html" class="nav-link">
+          <img src="/static/images/faq.png" alt="" class="nav-icon"> FAQ'S
+        </a>
+
+        <!-- Profile avatar dropdown -->
+        <div class="profile-dropdown" id="profile-dropdown">
+          <button class="profile-trigger" id="profile-trigger" aria-label="Profile menu">
+            <div class="profile-avatar profile-avatar-default">G</div>
+          </button>
+          <div class="profile-menu" id="profile-menu">
+            <div class="pm-header">
+              <div class="pm-avatar pm-avatar-default">G</div>
+              <div>
+                <div class="pm-name">Guest</div>
+                <div class="pm-role">Guest</div>
+              </div>
+            </div>
+            <div class="pm-divider"></div>
+            <!-- User links -->
+            <a href="#profile.html" class="pm-item pm-item-user">👤 My Profile</a>
+            <div class="pm-divider pm-item-user"></div>
+            <a href="/logout" class="pm-item pm-logout pm-item-user">→ Logout</a>
+            
+            <!-- Guest links -->
+            <a href="/login.html" class="pm-item pm-item-auth">🔑 Sign In</a>
+            <a href="/register.html" class="pm-item pm-item-auth">✨ Join Hub</a>
+          </div>
+        </div>
+        <a href="/register.html" class="btn btn-gold btn-sm pm-item-auth">Join Now</a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="detail-page container">
+      <!-- Breadcrumb -->
+      <div class="breadcrumb">
+        <a href="/index.html">Auctions</a>
+        <span class="breadcrumb-sep">/</span>
+        <span id="breadcrumb-item-name">Loading...</span>
+      </div>
+
+      <div class="detail-layout">
+        <!-- LEFT: image + info -->
+        <div id="detail-main-content">
+          <div class="detail-img-box" id="detail-img-container">
+            <!-- JS Populated -->
+            <div class="detail-img-ph">📦 Loading...</div>
+          </div>
+
+          <div class="detail-info">
+            <h1 id="detail-title">...</h1>
+            <div class="detail-meta">
+              <span id="detail-host"></span>
+              <span id="detail-start"></span>
+            </div>
+            <div class="detail-desc-label">Description</div>
+            <div class="detail-desc" id="detail-description">...</div>
+          </div>
+
+          <!-- Bid history -->
+          <div class="bid-history">
+            <h3> Bid History <span class="bh-count" id="bid-history-count">0</span></h3>
+            <div class="bh-list" id="bid-history-list">
+              <!-- JS Populated -->
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: bid panel -->
+        <div>
+          <div class="bid-panel">
+            <!-- Current price -->
+            <div class="bp-price">
+              <div>
+                <div class="bp-price-lbl">Current Bid</div>
+                <div class="bp-current" id="current-bid">₹...</div>
+              </div>
+              <div style="text-align:right">
+                <div class="bp-price-lbl">Starting</div>
+                <div class="bp-start" id="starting-price">₹...</div>
+              </div>
+            </div>
+
+            <!-- Countdown -->
+            <div class="bp-countdown" id="countdown-box" style="display:none">
+              <div class="bp-cd-label">Auction Ends In</div>
+              <div class="countdown" id="main-countdown">
+                <div class="cd-unit"><span class="cd-num" id="cd-d">--</span><span class="cd-lbl">Days</span></div>
+                <span class="cd-sep">:</span>
+                <div class="cd-unit"><span class="cd-num" id="cd-h">--</span><span class="cd-lbl">Hrs</span></div>
+                <span class="cd-sep">:</span>
+                <div class="cd-unit"><span class="cd-num" id="cd-m">--</span><span class="cd-lbl">Min</span></div>
+                <span class="cd-sep">:</span>
+                <div class="cd-unit"><span class="cd-num" id="cd-s">--</span><span class="cd-lbl">Sec</span></div>
+              </div>
+            </div>
+            <div class="bp-ended" id="ended-msg" style="display:none">Auction has ended</div>
+
+            <!-- Winner -->
+            <div id="winner-container" style="display:none">
+              <div class="winner-box">
+                <div class="winner-crown"></div>
+                <div>
+                  <div class="winner-lbl">Auction Winner</div>
+                  <div class="winner-name" id="winner-name">...</div>
+                  <div class="winner-price" id="winner-price">Won at ₹...</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bid form area -->
+            <div class="bp-form" id="bid-form-container">
+              <!-- Guest prompt -->
+              <div class="pm-item-auth guest-bid-notice" style="display:none; margin-bottom:12px; padding:12px; background:var(--gold-bg); border-radius:var(--r2); text-align:center; flex-direction:column;">
+                <p style="font-size:.85rem; margin-bottom:8px;">Log in to place your bid!</p>
+                <div style="display:flex; gap:8px; width:100%;">
+                  <a href="/login.html" class="btn btn-gold btn-sm" style="flex:1; justify-content:center">Sign In</a>
+                  <a href="/register.html" class="btn btn-outline btn-sm" style="flex:1; justify-content:center">Join Hub</a>
+                </div>
+              </div>
+
+              <!-- Host notice -->
+              <div id="host-notice" class="own-notice" style="display:none">ℹ️ You are hosting this auction — you cannot bid.</div>
+
+              <!-- Actual Form -->
+              <form method="POST" action="/place-bid" id="bid-form" class="pm-item-user" style="display:none">
+                <input type="hidden" name="auction_id" id="form-auction-id">
+                <label class="form-label">Your Bid Amount</label>
+                <div class="dollar-wrap" style="margin-bottom:6px">
+                  <span class="dollar-sign">₹</span>
+                  <input type="number" name="bid_amount" id="bid_amount" class="bid-input" step="0.01" required>
+                </div>
+                <div class="bid-hint">Min bid: <strong id="min-bid-val">₹...</strong></div>
+                <button type="submit" class="btn btn-gold btn-full">🔨 Place Bid</button>
+              </form>
+            </div>
+
+            <!-- Stats -->
+            <div class="bp-stats">
+              <div class="bps-item">
+                <div class="bps-num" id="stat-total-bids">0</div>
+                <div class="bps-lbl">Total Bids</div>
+              </div>
+              <div class="bps-item">
+                <div class="bps-num" id="stat-highest-bid">—</div>
+                <div class="bps-lbl">Highest</div>
+              </div>
+              <div class="bps-item">
+                <div class="bps-num" id="stat-end-date" style="font-size:.8rem">...</div>
+                <div class="bps-lbl">End Date</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <div>
+        <div class="footer-brand">
+          <img
+            src="https://static.vecteezy.com/system/resources/previews/022/360/251/large_2x/auction-solid-icons-simple-stock-illustration-stock-vector.jpg"
+            alt="AuctionHub" class="nav-logo"
+            style="width: 24px; height: 24px; vertical-align: middle; margin-right: 8px;">
+          Auction<span>Hub</span>
+        </div>
+        <p class="footer-tagline">The premier destination for online auctions. Discover rare items, place bids, win
+          extraordinary pieces.</p>
+        <div class="footer-social">
+          <a href="#" class="social-icon" title="Twitter">𝕏</a>
+          <a href="#" class="social-icon" title="Facebook">f</a>
+          <a href="#" class="social-icon" title="Instagram">📷</a>
+          <a href="#" class="social-icon" title="LinkedIn">in</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-heading">Quick Links</div>
+        <ul class="footer-links">
+          <li><a href="/index.html">Browse Auctions</a></li>
+          <li><a href="/faq.html">FAQ</a></li>
+          <li><a href="/profile.html">Profile</a></li>
+          <li><a href="/login.html">Log In</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-heading">Contact Us</div>
+        <ul class="footer-links footer-contact">
+          <li><img src="/static/images/email.png" alt="" class="contact-icon"> <a
+              href="mailto:support@auctionHub.com">support@auctionHub.com</a></li>
+          <li><img src="/static/images/phone-call.png" alt="" class="contact-icon"> <a href="tel:+919398582839">+91 9398582839</a></li>
+          <li><img src="/static/images/location.png" alt="" class="contact-icon"> 1-27/A 5th
+            floor,Lakshmipuram<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Guntur,Andhra Pradesh</li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-heading">About</div>
+        <p class="footer-text">AuctionHub connects buyers and sellers in a trusted, transparent marketplace. Our platform is designed to provide the best auction experience for both collectors and casual users.</p>
+        <div class="footer-heading" style="margin-top:18px">Legal</div>
+        <ul class="footer-links">
+          <li><a href="/terms.html">Terms & Conditions</a></li>
+          <li><a href="/privacy.html">Privacy Policy</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">&copy; 2024 AuctionHub. All rights reserved.</div>
+  </footer>
+
+  <script src="/static/js/script.js"></script>
+  <script src="/static/js/dynamic_ui.js"></script>
+</body>
+
+</html>
+
+
+

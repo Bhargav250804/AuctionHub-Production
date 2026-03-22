@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Auction — AuctionHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="/home" class="nav-brand">
+        <img
+          src="https://static.vecteezy.com/system/resources/previews/022/360/251/large_2x/auction-solid-icons-simple-stock-illustration-stock-vector.jpg"
+          alt="AuctionHub" class="nav-logo">
+        Auction<span>Hub</span>
+      </a>
+
+      <!-- Search in Navbar -->
+      <form method="GET" action="/active-auctions" class="nav-search" id="nav-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+          <circle cx="11" cy="11" r="8" />
+          <path d="m21 21-4.35-4.35" />
+        </svg>
+        <input type="text" name="search" placeholder="Search for unique items..." class="nav-search-input"
+          autocomplete="off">
+      </form>
+
+      <button class="nav-toggle" id="nav-toggle" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+
+      <div class="nav-menu" id="nav-menu">
+        <a href="/active-auctions" class="nav-link">
+          <img src="/static/images/MyAuctions.png" alt="" class="nav-icon"> Auctions
+        </a>
+
+        <a href="/create-auction" class="nav-link active">
+          <img src="/static/images/Create.png" alt="" class="nav-icon"> Create
+        </a>
+
+        <!-- My Activity dropdown -->
+        <div class="nav-dropdown" id="activity-dropdown">
+          <button class="nav-link nav-dd-trigger" id="activity-trigger">
+            <img src="/static/images/activity.png" alt="" class="nav-icon"> Activity ▾
+          </button>
+          <div class="nav-dd-menu" id="activity-menu">
+            <a href="/my-auctions" class="nav-dd-item">
+              <img src="/static/images/MyAuctions.png" alt="" class="nav-icon"> My Auctions
+            </a>
+            <a href="/my-bids" class="nav-dd-item">
+              <img src="/static/images/MyBids.png" alt="" class="nav-icon"> My Bids
+            </a>
+          </div>
+        </div>
+
+        <a href="/faq" class="nav-link">
+          <img src="/static/images/faq.png" alt="" class="nav-icon"> FAQ'S
+        </a>
+
+        <!-- Profile avatar dropdown -->
+        <div class="profile-dropdown" id="profile-dropdown">
+          <button class="profile-trigger" id="profile-trigger" aria-label="Profile menu">
+            <div class="profile-avatar profile-avatar-default">G</div>
+          </button>
+          <div class="profile-menu" id="profile-menu">
+            <div class="pm-header">
+              <div class="pm-avatar pm-avatar-default">G</div>
+              <div>
+                <div class="pm-name">Guest</div>
+                <div class="pm-role">Guest</div>
+              </div>
+            </div>
+            <div class="pm-divider"></div>
+            <!-- User links -->
+            <a href="/profile" class="pm-item pm-item-user">👤 My Profile</a>
+            <div class="pm-divider pm-item-user"></div>
+            <a href="/logout" class="pm-item pm-logout pm-item-user">→ Logout</a>
+
+            <!-- Guest links -->
+            <a href="/login" class="pm-item pm-item-auth">🔑 Sign In</a>
+            <a href="/register" class="pm-item pm-item-auth">✨ Join Hub</a>
+          </div>
+        </div>
+
+        <a href="/login" class="nav-link pm-item-auth">
+          <span class="nav-icon">🔑</span> Sign In
+        </a>
+        <a href="/register" class="btn btn-gold btn-sm pm-item-auth">Join Now</a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="create-page">
+      <a href="/home" class="page-back">← Back to Auctions</a>
+      <h1 class="page-title">Create New Auction</h1>
+      <p class="page-sub">List your item and let the bidding begin</p>
+
+      <div class="form-card">
+        <form method="POST" enctype="multipart/form-data" id="create-form" novalidate>
+          <div class="form-section">
+            <div class="fs-header">
+              <div class="fs-step">01</div>
+              <div>
+                <div class="fs-title">Item Details</div>
+                <div class="fs-sub">Describe what you're auctioning</div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Item Name <span class="req">*</span></label>
+              <input type="text" name="item_name" id="item_name" class="input"
+                placeholder="e.g. Vintage Rolex Submariner 1965">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Description</label>
+              <textarea name="description" id="description" class="input" rows="5"
+                placeholder="Describe the item..."></textarea>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="fs-header">
+              <div class="fs-step">02</div>
+              <div>
+                <div class="fs-title">Pricing & Timing</div>
+                <div class="fs-sub">Set your starting price and end date</div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Starting Price <span class="req">*</span></label>
+                <div class="dollar-wrap">
+                  <span class="dollar-sign">₹</span>
+                  <input type="number" name="starting_price" id="starting_price" class="bid-input" placeholder="0.00"
+                    step="0.01">
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Auction End Date & Time <span class="req">*</span></label>
+                <input type="datetime-local" name="end_time" id="end_time" class="input" style="color-scheme:dark">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="fs-header">
+              <div class="fs-step">03</div>
+              <div>
+                <div class="fs-title">Item Image</div>
+              </div>
+            </div>
+            <div class="upload-zone" onclick="document.getElementById('image').click()">
+              <div class="upload-prompt" id="upload-prompt">
+                <span class="up-icon">📁</span>
+                <span class="up-text">Click to upload image</span>
+              </div>
+              <input type="file" name="image" id="image" accept="image/*" style="display:none">
+            </div>
+          </div>
+
+          <div class="form-submit-bar">
+            <div class="submit-note">Goes live immediately after creation</div>
+            <div class="submit-btns">
+              <a href="/home" class="btn btn-outline">Cancel</a>
+              <button type="submit" class="btn btn-gold">🔨 Launch Auction</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <div>
+        <div class="footer-brand">
+          <img
+            src="https://static.vecteezy.com/system/resources/previews/022/360/251/large_2x/auction-solid-icons-simple-stock-illustration-stock-vector.jpg"
+            alt="AuctionHub" class="nav-logo"
+            style="width: 24px; height: 24px; vertical-align: middle; margin-right: 8px;">
+          Auction<span>Hub</span>
+        </div>
+        <p class="footer-tagline">The premier destination for online auctions. Discover rare items, place bids, win
+          extraordinary pieces.</p>
+        <div class="footer-social">
+          <a href="#" class="social-icon" title="Twitter">𝕏</a>
+          <a href="#" class="social-icon" title="Facebook">f</a>
+          <a href="#" class="social-icon" title="Instagram">📷</a>
+          <a href="#" class="social-icon" title="LinkedIn">in</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-heading">Quick Links</div>
+        <ul class="footer-links">
+          <li><a href="/index.html">Browse Auctions</a></li>
+          <li><a href="/faq.html">FAQ</a></li>
+          <li><a href="/profile.html">Profile</a></li>
+          <li><a href="/login.html">Log In</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-heading">Contact Us</div>
+        <ul class="footer-links footer-contact">
+          <li><img src="/static/images/email.png" alt="" class="contact-icon"> <a
+              href="mailto:support@auctionHub.com">support@auctionHub.com</a></li>
+          <li><img src="/static/images/phone-call.png" alt="" class="contact-icon"> <a href="tel:+919398582839">+91
+              9398582839</a></li>
+          <li><img src="/static/images/location.png" alt="" class="contact-icon"> 1-27/A 5th
+            floor,Lakshmipuram<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Guntur,Andhra Pradesh</li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-heading">About</div>
+        <p class="footer-text">AuctionHub connects buyers and sellers in a trusted, transparent marketplace. Our
+          platform is designed to provide the best auction experience for both collectors and casual users.</p>
+        <div class="footer-heading" style="margin-top:18px">Legal</div>
+        <ul class="footer-links">
+          <li><a href="/terms.html">Terms & Conditions</a></li>
+          <li><a href="/privacy.html">Privacy Policy</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">&copy; 2024 AuctionHub. All rights reserved.</div>
+  </footer>
+
+  <script src="/static/js/script.js"></script>
+  <script src="/static/js/dynamic_ui.js"></script>
+  <script>
+    function setDuration(hours, btn) {
+      const d = new Date(Date.now() + hours * 3600000);
+      document.getElementById('end_time').value = d.toISOString().slice(0, 16);
+      document.querySelectorAll('.dur-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+  </script>
+</body>
+
+</html>

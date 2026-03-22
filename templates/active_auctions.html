@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Active Auctions — AuctionHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="/index.html" class="nav-brand">
+        <img
+          src="https://static.vecteezy.com/system/resources/previews/022/360/251/large_2x/auction-solid-icons-simple-stock-illustration-stock-vector.jpg"
+          alt="AuctionHub" class="nav-logo">
+        Auction<span>Hub</span>
+      </a>
+
+      <!-- Search in Navbar -->
+      <form method="GET" action="/active_auctions.html" class="nav-search" id="nav-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+          <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+        </svg>
+        <input type="text" name="search" placeholder="Search for unique items..." class="nav-search-input" autocomplete="off">
+      </form>
+
+      <button class="nav-toggle" id="nav-toggle" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+
+      <div class="nav-menu" id="nav-menu">
+        <a href="/active_auctions.html" class="nav-link active">
+          <img src="/static/images/MyAuctions.png" alt="" class="nav-icon"> Auctions
+        </a>
+
+        <a href="/create_auction.html" class="nav-link auth-only">
+          <img src="/static/images/Create.png" alt="" class="nav-icon"> Create
+        </a>
+
+        <!-- My Activity dropdown -->
+        <div class="nav-dropdown auth-only" id="activity-dropdown">
+          <button class="nav-link nav-dd-trigger" id="activity-trigger">
+            <img src="/static/images/activity.png" alt="" class="nav-icon"> Activity ▾
+          </button>
+          <div class="nav-dd-menu" id="activity-menu">
+            <a href="/my_auctions.html" class="nav-dd-item">
+              <img src="/static/images/MyAuctions.png" alt="" class="nav-icon"> My Auctions
+            </a>
+            <a href="/my_bids.html" class="nav-dd-item">
+              <img src="/static/images/MyBids.png" alt="" class="nav-icon"> My Bids
+            </a>
+          </div>
+        </div>
+
+        <a href="/faq.html" class="nav-link">
+          <img src="/static/images/faq.png" alt="" class="nav-icon"> FAQ'S
+        </a>
+
+        <!-- Profile avatar dropdown -->
+        <div class="profile-dropdown" id="profile-dropdown">
+          <button class="profile-trigger" id="profile-trigger" aria-label="Profile menu">
+            <div class="profile-avatar profile-avatar-default">G</div>
+          </button>
+          <div class="profile-menu" id="profile-menu">
+            <div class="pm-header">
+              <div class="pm-avatar pm-avatar-default">G</div>
+              <div>
+                <div class="pm-name">Guest</div>
+                <div class="pm-role">Guest</div>
+              </div>
+            </div>
+            <div class="pm-divider"></div>
+            <!-- User links -->
+            <a href="#profile.html" class="pm-item pm-item-user">👤 My Profile</a>
+            <div class="pm-divider pm-item-user"></div>
+            <a href="/logout" class="pm-item pm-logout pm-item-user">→ Logout</a>
+            
+            <!-- Guest links -->
+            <a href="/login.html" class="pm-item pm-item-auth">🔑 Sign In</a>
+            <a href="/register.html" class="pm-item pm-item-auth">✨ Join Hub</a>
+          </div>
+        </div>
+        <a href="/register.html" class="btn btn-gold btn-sm pm-item-auth">Join Now</a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container" style="margin-top: 40px;">
+      <div class="page-header">
+        <div class="section-header">
+          <h2>Active Auctions</h2>
+          <span class="badge-count" id="auction-count-badge">... item(s)</span>
+        </div>
+
+        <!-- Page Specific Filter Bar -->
+        <section class="active-filter-bar">
+          <form id="filter-form" class="active-filter-inner">
+            <div class="search-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+              </svg>
+              <input type="text" name="search" id="filter-search" class="input" placeholder="Search auctions…">
+            </div>
+            <select name="sort" id="filter-sort" class="input sort-select">
+              <option value="end_time">Ending Soonest</option>
+              <option value="newest">Newest First</option>
+              <option value="price_asc">Price: Low → High</option>
+              <option value="price_desc">Price: High → Low</option>
+            </select>
+            <button type="submit" class="btn btn-gold">
+              <img src="/static/images/filters.png" alt="" class="nav-icon" style="margin:0; width:16px; height:16px;"> Filter Results
+            </button>
+          </form>
+        </section>
+      </div>
+
+      <div class="auction-grid" id="auction-grid">
+        <!-- JS Populated -->
+        <div class="loading-state">Loading active auctions...</div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <div>
+        <div class="footer-brand">
+          <img
+            src="https://static.vecteezy.com/system/resources/previews/022/360/251/large_2x/auction-solid-icons-simple-stock-illustration-stock-vector.jpg"
+            alt="AuctionHub" class="nav-logo"
+            style="width: 24px; height: 24px; vertical-align: middle; margin-right: 8px;">
+          Auction<span>Hub</span>
+        </div>
+        <p class="footer-tagline">The premier destination for online auctions. Discover rare items, place bids, win
+          extraordinary pieces.</p>
+        <div class="footer-social">
+          <a href="#" class="social-icon" title="Twitter">𝕏</a>
+          <a href="#" class="social-icon" title="Facebook">f</a>
+          <a href="#" class="social-icon" title="Instagram">📷</a>
+          <a href="#" class="social-icon" title="LinkedIn">in</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-heading">Quick Links</div>
+        <ul class="footer-links">
+          <li><a href="/index.html">Browse Auctions</a></li>
+          <li><a href="/faq.html">FAQ</a></li>
+          <li><a href="/profile.html">Profile</a></li>
+          <li><a href="/login.html">Log In</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-heading">Contact Us</div>
+        <ul class="footer-links footer-contact">
+          <li><img src="/static/images/email.png" alt="" class="contact-icon"> <a
+              href="mailto:support@auctionHub.com">support@auctionHub.com</a></li>
+          <li><img src="/static/images/phone-call.png" alt="" class="contact-icon"> <a href="tel:+919398582839">+91 9398582839</a></li>
+          <li><img src="/static/images/location.png" alt="" class="contact-icon"> 1-27/A 5th
+            floor,Lakshmipuram<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Guntur,Andhra Pradesh</li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-heading">About</div>
+        <p class="footer-text">AuctionHub connects buyers and sellers in a trusted, transparent marketplace. Our platform is designed to provide the best auction experience for both collectors and casual users.</p>
+        <div class="footer-heading" style="margin-top:18px">Legal</div>
+        <ul class="footer-links">
+          <li><a href="/terms.html">Terms & Conditions</a></li>
+          <li><a href="/privacy.html">Privacy Policy</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">&copy; 2024 AuctionHub. All rights reserved.</div>
+  </footer>
+
+  <script src="/static/js/script.js"></script>
+  <script src="/static/js/dynamic_ui.js"></script>
+</body>
+
+</html>
+
+
+
