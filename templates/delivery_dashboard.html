@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delivery Agent Dashboard — AuctionHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="/home" class="nav-brand">
+        <img src="https://static.vecteezy.com/system/resources/previews/022/360/251/large_2x/auction-solid-icons-simple-stock-illustration-stock-vector.jpg" alt="AuctionHub" class="nav-logo">
+        Auction<span>Hub</span>
+      </a>
+      <div class="nav-menu" id="nav-menu">
+        <a href="/active-auctions" class="nav-link">Auctions</a>
+        <a href="/delivery-dashboard" class="nav-link active">Shipments</a>
+        <a href="/profile" class="nav-link">Profile</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="delivery-dashboard-layout">
+    <div class="page-header" style="margin-bottom: 30px;">
+      <h1 class="page-title">Delivery Dashboard</h1>
+      <p class="page-sub">Manage and dispatch won auction item shipments</p>
+    </div>
+
+    <!-- Section 1: Awaiting Pickup -->
+    <div style="margin-bottom: 40px;">
+      <h2 style="font-family:'Playfair Display',serif; font-size:1.4rem; color:var(--gold); border-bottom:1px solid var(--border2); padding-bottom:8px; margin-bottom:16px;">📦 Ready for Dispatch</h2>
+      <div class="delivery-card-list" id="list-dispatch">
+        <div class="loading-state">Loading shipments...</div>
+      </div>
+    </div>
+
+    <!-- Section 2: Out for Delivery -->
+    <div style="margin-bottom: 40px;">
+      <h2 style="font-family:'Playfair Display',serif; font-size:1.4rem; color:#3498db; border-bottom:1px solid var(--border2); padding-bottom:8px; margin-bottom:16px;">🚚 Out for Delivery</h2>
+      <div class="delivery-card-list" id="list-shipping">
+        <div class="loading-state">Loading shipments...</div>
+      </div>
+    </div>
+
+    <!-- Section 3: Completed Deliveries -->
+    <div>
+      <h2 style="font-family:'Playfair Display',serif; font-size:1.4rem; color:#2ecc71; border-bottom:1px solid var(--border2); padding-bottom:8px; margin-bottom:16px;">✅ Delivered Shipments</h2>
+      <div class="delivery-card-list" id="list-delivered">
+        <div class="loading-state">Loading shipments...</div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-bottom">&copy; 2024 AuctionHub. All rights reserved.</div>
+  </footer>
+
+  <script src="/static/js/script.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      let currentUserId = null;
+      fetch('/api/user/status')
+        .then(res => res.json())
+        .then(user => {
+          currentUserId = user.user_id;
+          loadShipments();
+        })
+        .catch(() => loadShipments());
+
+      function loadShipments() {
+        fetch('/api/delivery/list')
+          .then(res => res.json())
+          .then(deliveries => {
+            renderLists(deliveries);
+          })
+          .catch(err => {
+            console.error("Failed to load delivery list:", err);
+            document.querySelectorAll('.delivery-card-list').forEach(el => {
+              el.innerHTML = '<div class="error-state">Failed to load shipments.</div>';
+            });
+          });
+      }
+
+      function renderLists(deliveries) {
+        const divDispatch = document.getElementById('list-dispatch');
+        const divShipping = document.getElementById('list-shipping');
+        const divDelivered = document.getElementById('list-delivered');
+
+        const ready = deliveries.filter(d => d.status === 'ready_for_dispatch');
+        const shipping = deliveries.filter(d => d.status === 'out_for_delivery' && d.delivery_boy_id === currentUserId);
+        const completed = deliveries.filter(d => d.status === 'delivered' && d.delivery_boy_id === currentUserId);
+
+        if (ready.length === 0) {
+          divDispatch.innerHTML = '<div class="empty-state" style="padding:20px; text-align:center; color:var(--text3); border:1px dashed var(--border2); border-radius:8px;">No shipments waiting for dispatch.</div>';
+        } else {
+          divDispatch.innerHTML = ready.map(d => `
+            <div class="delivery-agent-card">
+              <div class="delivery-card-info">
+                <div class="delivery-card-item-title">${d.item_name}</div>
+                <div class="delivery-card-meta">
+                  <span>Seller: <strong>${d.host_name}</strong></span>
+                  <span>Amount: <strong>₹${parseFloat(d.current_price).toFixed(2)}</strong></span>
+                </div>
+                <div class="delivery-card-address">📍 Address: ${d.house_number}, ${d.area}, ${d.city}, ${d.state} - ${d.pincode}</div>
+              </div>
+              <div class="delivery-card-actions">
+                <button onclick="dispatchDelivery(${d.id})" class="btn btn-gold btn-sm">🚚 Accept & Dispatch</button>
+              </div>
+            </div>
+          `).join('');
+        }
+
+        if (shipping.length === 0) {
+          divShipping.innerHTML = '<div class="empty-state" style="padding:20px; text-align:center; color:var(--text3); border:1px dashed var(--border2); border-radius:8px;">No packages currently out for delivery.</div>';
+        } else {
+          divShipping.innerHTML = shipping.map(d => `
+            <div class="delivery-agent-card">
+              <div class="delivery-card-info">
+                <div class="delivery-card-item-title">${d.item_name}</div>
+                <div class="delivery-card-meta">
+                  <span>Seller: <strong>${d.host_name}</strong></span>
+                  <span>Amount: <strong>₹${parseFloat(d.current_price).toFixed(2)}</strong></span>
+                </div>
+                <div class="delivery-card-address">📍 Address: ${d.house_number}, ${d.area}, ${d.city}, ${d.state} - ${d.pincode}</div>
+              </div>
+              <div class="delivery-card-actions">
+                <a href="/delivery/scan?id=${d.id}" class="btn btn-gold btn-sm" style="background:#3498db; border-color:#3498db; color:#fff;">📷 Scan QR to Deliver</a>
+              </div>
+            </div>
+          `).join('');
+        }
+
+        if (completed.length === 0) {
+          divDelivered.innerHTML = '<div class="empty-state" style="padding:20px; text-align:center; color:var(--text3); border:1px dashed var(--border2); border-radius:8px;">No completed delivery history.</div>';
+        } else {
+          divDelivered.innerHTML = completed.map(d => `
+            <div class="delivery-agent-card" style="opacity:0.85;">
+              <div class="delivery-card-info">
+                <div class="delivery-card-item-title">${d.item_name}</div>
+                <div class="delivery-card-meta">
+                  <span>Seller: <strong>${d.host_name}</strong></span>
+                  <span>Amount: <strong>₹${parseFloat(d.current_price).toFixed(2)}</strong></span>
+                </div>
+                <div class="delivery-card-address">📍 Address: ${d.house_number}, ${d.area}, ${d.city}, ${d.state} - ${d.pincode}</div>
+              </div>
+              <div class="delivery-card-actions">
+                <span class="badge" style="background:#2ecc71; color:#000; font-weight:700; padding:6px 14px;">COMPLETED</span>
+              </div>
+            </div>
+          `).join('');
+        }
+      }
+
+      window.dispatchDelivery = function(id) {
+        if (!confirm("Are you sure you want to accept and start dispatching this shipment?")) return;
+        
+        fetch(`/api/delivery/${id}/dispatch`, {
+          method: 'POST'
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            loadShipments();
+          } else {
+            alert("Error: " + (data.error || "Failed to dispatch."));
+          }
+        })
+        .catch(err => console.error("Error dispatching:", err));
+      };
+    });
+  </script>
+</body>
+</html>

@@ -10,6 +10,8 @@
     href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </head>
 
 <body>
@@ -78,6 +80,7 @@
             </div>
             <div class="pm-divider"></div>
             <a href="/profile" class="pm-item pm-item-user">👤 My Profile</a>
+            <a href="/wallet" class="pm-item pm-item-user">💰 My Wallet</a>
             <div class="pm-divider pm-item-user"></div>
             <a href="/logout" class="pm-item pm-logout pm-item-user">→ Logout</a>
             <a href="/login" class="pm-item pm-item-auth">🔑 Sign In</a>
@@ -145,6 +148,35 @@
             </div>
           </div>
 
+          <div class="form-section">
+            <div class="fs-header">
+              <div class="fs-step">04</div>
+              <div>
+                <div class="fs-title">Location Details</div>
+                <div class="fs-sub">Specify where the item is located for shipping/pickup</div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Location Name <span class="req">*</span></label>
+              <div class="map-search-row">
+                <input type="text" name="location_name" id="location_name" class="input" placeholder="e.g. Guntur, Andhra Pradesh" value="{{ auction.location_name or 'Guntur, Andhra Pradesh' }}" required>
+                <button type="button" id="btn-geocode-search" class="btn btn-gold" style="white-space: nowrap;">🔍 Find</button>
+              </div>
+            </div>
+            <div class="form-row" style="margin-bottom: 12px; display: flex; gap: 16px;">
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Latitude</label>
+                <input type="number" step="any" name="latitude" id="latitude" class="input" style="background: var(--card2);" value="{{ auction.latitude or 16.3067 }}" readonly>
+              </div>
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Longitude</label>
+                <input type="number" step="any" name="longitude" id="longitude" class="input" style="background: var(--card2);" value="{{ auction.longitude or 80.4365 }}" readonly>
+              </div>
+            </div>
+            <button type="button" id="btn-use-mylocation" class="btn btn-outline btn-sm" style="margin-bottom: 12px; width: fit-content; display: inline-flex; align-items: center; gap: 6px;">📍 Use Current Location</button>
+            <div id="map-picker" style="height: 300px; border-radius: var(--r2); border: 1px solid var(--border2); margin-top: 8px;"></div>
+          </div>
+
           <div class="form-submit-bar">
             <div class="submit-btns">
               <a href="/auction/{{ auction.id }}" class="btn btn-outline">Cancel</a>
@@ -209,6 +241,114 @@
 
   <script src="/static/js/script.js"></script>
   <script src="/static/js/dynamic_ui.js"></script>
+  <script>
+    // Initialize Leaflet Map picker with existing coordinates
+    document.addEventListener("DOMContentLoaded", function() {
+      const defaultLat = parseFloat("{{ auction.latitude or 16.3067 }}");
+      const defaultLng = parseFloat("{{ auction.longitude or 80.4365 }}");
+      
+      const latInput = document.getElementById('latitude');
+      const lngInput = document.getElementById('longitude');
+      const locInput = document.getElementById('location_name');
+      
+      const map = L.map('map-picker').setView([defaultLat, defaultLng], 13);
+      
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20
+      }).addTo(map);
+      
+      const marker = L.marker([defaultLat, defaultLng], {
+        draggable: true
+      }).addTo(map);
+      
+      marker.on('dragend', function(e) {
+        const position = marker.getLatLng();
+        updateCoords(position.lat, position.lng);
+        reverseGeocode(position.lat, position.lng);
+      });
+      
+      map.on('click', function(e) {
+        marker.setLatLng(e.latlng);
+        updateCoords(e.latlng.lat, e.latlng.lng);
+        reverseGeocode(e.latlng.lat, e.latlng.lng);
+      });
+      
+      function updateCoords(lat, lng) {
+        latInput.value = lat.toFixed(6);
+        lngInput.value = lng.toFixed(6);
+      }
+      
+      document.getElementById('btn-geocode-search').addEventListener('click', function(e) {
+        e.preventDefault();
+        const address = locInput.value.trim();
+        if (!address) return;
+        
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.length > 0) {
+              const result = data[0];
+              const lat = parseFloat(result.lat);
+              const lon = parseFloat(result.lon);
+              map.setView([lat, lon], 14);
+              marker.setLatLng([lat, lon]);
+              updateCoords(lat, lon);
+            } else {
+              alert("Location not found. Please try a different query or select on the map.");
+            }
+          })
+          .catch(err => {
+            console.error("Geocoding failed:", err);
+          });
+      });
+      
+      document.getElementById('btn-use-mylocation').addEventListener('click', function(e) {
+        e.preventDefault();
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(function(position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            map.setView([lat, lng], 15);
+            marker.setLatLng([lat, lng]);
+            updateCoords(lat, lng);
+            reverseGeocode(lat, lng);
+          }, function() {
+            alert("Could not retrieve geolocation. Please select manually on the map.");
+          });
+        } else {
+          alert("Geolocation is not supported by your browser.");
+        }
+      });
+      
+      let geocodeTimeout;
+      function reverseGeocode(lat, lng) {
+        if (geocodeTimeout) clearTimeout(geocodeTimeout);
+        geocodeTimeout = setTimeout(() => {
+          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+            .then(res => res.json())
+            .then(data => {
+              if (data && data.display_name) {
+                const parts = data.address;
+                const city = parts.city || parts.town || parts.village || parts.suburb || '';
+                const state = parts.state || '';
+                const country = parts.country || '';
+                let label = data.display_name;
+                if (city && state) {
+                  label = `${city}, ${state}`;
+                  if (country) label += `, ${country}`;
+                } else if (parts.road && city) {
+                  label = `${parts.road}, ${city}`;
+                }
+                locInput.value = label;
+              }
+            })
+            .catch(err => console.error("Reverse geocoding error:", err));
+        }, 800);
+      }
+    });
+  </script>
 </body>
 
 </html>

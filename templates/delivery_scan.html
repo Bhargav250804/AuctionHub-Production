@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scan QR Delivery — AuctionHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="/home" class="nav-brand">
+        <img src="https://static.vecteezy.com/system/resources/previews/022/360/251/large_2x/auction-solid-icons-simple-stock-illustration-stock-vector.jpg" alt="AuctionHub" class="nav-logo">
+        Auction<span>Hub</span>
+      </a>
+      <div class="nav-menu" id="nav-menu">
+        <a href="/active-auctions" class="nav-link">Auctions</a>
+        <a href="/delivery-dashboard" class="nav-link active">Shipments</a>
+        <a href="/profile" class="nav-link">Profile</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="scanner-container">
+    <a href="/delivery-dashboard" class="page-back" style="display:block; text-align:left; margin-bottom:20px;">← Back to Shipments</a>
+    
+    <div class="page-header" style="margin-bottom: 24px; text-align: center;">
+      <h1 class="page-title" style="font-size:1.8rem; margin:0;">Complete Shipment</h1>
+      <p class="page-sub">Scan the winner's confirmation QR code to verify delivery</p>
+    </div>
+
+    <!-- Camera Scanning Box -->
+    <div style="background:var(--card); border:1px solid var(--border2); border-radius:var(--r3); padding:20px; margin-bottom:20px;">
+      <div id="reader" style="width: 100%;"></div>
+      <div style="font-size:0.8rem; color:var(--text3); margin-top:10px;">Camera access required. Please grant browser permissions.</div>
+    </div>
+
+    <!-- Manual Simulation Fallback -->
+    <div class="scanner-simulation-box">
+      <h3 style="margin-top:0; font-size:1rem; color:#fff; font-family:'Playfair Display',serif;">Scanner Simulation (PC testing)</h3>
+      <p style="font-size:0.75rem; color:var(--text3); margin-bottom:12px;">For local setup or devices without camera access, click below to simulate the QR code detection.</p>
+      
+      <div class="form-group" style="text-align:left; margin-bottom:12px;">
+        <label class="form-label" style="font-size:0.75rem;">Verification Token</label>
+        <input type="text" id="simulated-token" class="input" placeholder="e.g. delivery_verify_1">
+      </div>
+      
+      <button id="btn-simulate-scan" class="btn btn-gold btn-full" style="justify-content:center;">⚡ Simulate Successful Scan</button>
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-bottom">&copy; 2024 AuctionHub. All rights reserved.</div>
+  </footer>
+
+  <script src="/static/js/script.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const params = new URLSearchParams(window.location.search);
+      const deliveryId = params.get('id');
+      
+      if (!deliveryId) {
+        alert("No delivery ID specified!");
+        window.location.href = "/delivery-dashboard";
+        return;
+      }
+      
+      document.getElementById('simulated-token').value = `delivery_verify_${deliveryId}`;
+
+      const html5QrcodeScanner = new Html5QrcodeScanner(
+        "reader", 
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        false
+      );
+
+      function onScanSuccess(decodedText, decodedResult) {
+        html5QrcodeScanner.clear();
+        submitDeliveryToken(decodedText);
+      }
+
+      function onScanFailure(error) {
+        console.warn(`Code scan error: ${error}`);
+      }
+
+      html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+
+      document.getElementById('btn-simulate-scan').addEventListener('click', function(e) {
+        e.preventDefault();
+        const token = document.getElementById('simulated-token').value.trim();
+        if (!token) {
+          alert("Please enter a verification token first.");
+          return;
+        }
+        submitDeliveryToken(token);
+      });
+
+      function submitDeliveryToken(tokenValue) {
+        fetch(`/api/delivery/${deliveryId}/deliver`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ token: tokenValue })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert("✅ Package delivered successfully! Shipment status updated.");
+            window.location.href = "/delivery-dashboard";
+          } else {
+            alert("❌ Scan validation failed: " + (data.error || "Invalid token."));
+            window.location.reload();
+          }
+        })
+        .catch(err => {
+          console.error("Complete delivery call failed:", err);
+          alert("Network or database connection error.");
+        });
+      }
+    });
+  </script>
+</body>
+</html>

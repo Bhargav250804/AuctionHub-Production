@@ -59,6 +59,14 @@
           </div>
         </div>
 
+        <a href="/wallet" class="nav-link auth-only nav-wallet-link">
+          💰 Wallet <span class="nav-wallet-badge" id="nav-wallet-badge">₹0</span>
+        </a>
+
+        <a href="/admin" class="nav-link admin-only nav-admin-link">
+          🛡️ Admin
+        </a>
+
         <a href="/faq.html" class="nav-link">
           <img src="/static/images/faq.png" alt="" class="nav-icon"> FAQ'S
         </a>
@@ -79,6 +87,7 @@
             <div class="pm-divider"></div>
             <!-- User links -->
             <a href="#profile.html" class="pm-item pm-item-user">👤 My Profile</a>
+            <a href="/wallet" class="pm-item pm-item-user">💰 My Wallet</a>
             <div class="pm-divider pm-item-user"></div>
             <a href="/logout" class="pm-item pm-logout pm-item-user">→ Logout</a>
             
@@ -93,6 +102,20 @@
   </nav>
 
   <main>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flashes">
+      {% for cat, msg in messages %}
+      <div class="flash flash-{{ cat }}">
+        {% if cat=='success' %}✅{% elif cat=='error' %}❌{% elif cat=='warning' %}⚠️{% else %}ℹ️{% endif %}
+        {{ msg }}
+        <button class="flash-close">✕</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
     <div class="auth-page">
       <div class="auth-card" style="max-width:460px">
         <div class="auth-icon">✨</div>
@@ -106,6 +129,7 @@
               <span class="icon">👤</span>
               <input type="text" name="username" id="username" class="input" placeholder="Choose a username">
             </div>
+            <div class="field-err" id="err-username"></div>
           </div>
 
           <div class="form-group">
@@ -114,6 +138,7 @@
               <span class="icon">📧</span>
               <input type="email" name="email" id="email" class="input" placeholder="Enter your email">
             </div>
+            <div class="field-err" id="err-email"></div>
           </div>
 
           <div class="form-group">
@@ -122,6 +147,22 @@
               <span class="icon">🔒</span>
               <input type="password" name="password" id="password" class="input" placeholder="At least 6 characters">
             </div>
+            <div class="str-bar" id="str-bar">
+              <div class="str-track">
+                <div class="str-fill" id="str-fill"></div>
+              </div>
+              <div class="str-lbl" id="str-lbl"></div>
+            </div>
+            <div class="field-err" id="err-password"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Confirm Password <span class="req">*</span></label>
+            <div class="input-wrap">
+              <span class="icon">🔒</span>
+              <input type="password" name="confirm_password" id="confirm_password" class="input" placeholder="Confirm your password">
+            </div>
+            <div class="field-err" id="err-confirm"></div>
           </div>
 
           <button type="submit" class="btn btn-gold btn-full">Create Account →</button>

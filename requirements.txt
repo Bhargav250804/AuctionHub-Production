@@ -1,4 +1,6 @@
-Flask>=2.3.0
-Werkzeug>=2.3.0
-Authlib>=1.3.0
-requests>=2.31.0
+flask
+authlib
+requests
+stripe
+razorpay
+

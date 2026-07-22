@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enter Delivery Address — AuctionHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+</head>
+<body>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="/home" class="nav-brand">
+        <img src="https://static.vecteezy.com/system/resources/previews/022/360/251/large_2x/auction-solid-icons-simple-stock-illustration-stock-vector.jpg" alt="AuctionHub" class="nav-logo">
+        Auction<span>Hub</span>
+      </a>
+      <div class="nav-menu" id="nav-menu">
+        <a href="/active-auctions" class="nav-link">Auctions</a>
+        <a href="/my-bids" class="nav-link active">Activity</a>
+        <a href="/wallet" class="nav-link">Wallet</a>
+        <a href="/profile" class="nav-link">Profile</a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="create-page">
+      <a href="/my-bids" class="page-back">← Back to My Bids</a>
+      <h1 class="page-title">Delivery Address</h1>
+      <p class="page-sub">Enter shipping information for your won item: <strong>{{ delivery.item_name }}</strong></p>
+
+      <div class="form-card">
+        <form id="address-form" novalidate>
+          <div class="form-section">
+            <div class="fs-header">
+              <div class="fs-step">01</div>
+              <div>
+                <div class="fs-title">Postal Address</div>
+                <div class="fs-sub">Where should we deliver the item?</div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">House / Flat / Door Number <span class="req">*</span></label>
+              <input type="text" id="house_number" class="input" placeholder="e.g. Door No. 4-12, Flat 302" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Area / Street / Locality <span class="req">*</span></label>
+              <div class="map-search-row">
+                <input type="text" id="location_name" class="input" placeholder="e.g. Lakshmipuram, 5th lane" required>
+                <button type="button" id="btn-geocode-search" class="btn btn-gold">🔍 Find</button>
+              </div>
+            </div>
+            <div class="form-row" style="display: flex; gap: 16px;">
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">City <span class="req">*</span></label>
+                <input type="text" id="city" class="input" placeholder="e.g. Guntur" required>
+              </div>
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">State <span class="req">*</span></label>
+                <input type="text" id="state" class="input" placeholder="e.g. Andhra Pradesh" required>
+              </div>
+            </div>
+            <div class="form-group" style="margin-top: 15px;">
+              <label class="form-label">Zip / Pin Code <span class="req">*</span></label>
+              <input type="text" id="pincode" class="input" placeholder="e.g. 522007" required>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="fs-header">
+              <div class="fs-step">02</div>
+              <div>
+                <div class="fs-title">Pin Exact Geolocation</div>
+                <div class="fs-sub">Drag the marker to your building entrance for accurate delivery</div>
+              </div>
+            </div>
+            <div class="form-row" style="margin-bottom: 12px; display: flex; gap: 16px;">
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Latitude</label>
+                <input type="number" step="any" id="latitude" class="input" style="background: var(--card2);" readonly>
+              </div>
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Longitude</label>
+                <input type="number" step="any" id="longitude" class="input" style="background: var(--card2);" readonly>
+              </div>
+            </div>
+            <button type="button" id="btn-use-mylocation" class="btn btn-outline btn-sm" style="margin-bottom: 12px; width: fit-content; display: inline-flex; align-items: center; gap: 6px;">📍 Use Current Location</button>
+            <div id="map-picker" style="height: 300px; border-radius: var(--r2); border: 1px solid var(--border2); margin-top: 8px;"></div>
+          </div>
+
+          <div class="form-submit-bar">
+            <div class="submit-note">Double-check details before proceeding</div>
+            <div class="submit-btns">
+              <a href="/my-bids" class="btn btn-outline">Cancel</a>
+              <button type="submit" class="btn btn-gold">🚚 Confirm Address</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <footer style="margin-top: 60px;">
+    <div class="footer-bottom">&copy; 2024 AuctionHub. All rights reserved.</div>
+  </footer>
+
+  <script src="/static/js/script.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const defaultLat = parseFloat("{{ delivery.item_lat or 16.3067 }}");
+      const defaultLng = parseFloat("{{ delivery.item_lng or 80.4365 }}");
+      
+      const latInput = document.getElementById('latitude');
+      const lngInput = document.getElementById('longitude');
+      const areaInput = document.getElementById('location_name');
+      const cityInput = document.getElementById('city');
+      const stateInput = document.getElementById('state');
+      const pinInput = document.getElementById('pincode');
+      
+      latInput.value = defaultLat;
+      lngInput.value = defaultLng;
+      
+      const map = L.map('map-picker').setView([defaultLat, defaultLng], 13);
+      
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20
+      }).addTo(map);
+      
+      const marker = L.marker([defaultLat, defaultLng], {
+        draggable: true
+      }).addTo(map);
+      
+      marker.on('dragend', function(e) {
+        const position = marker.getLatLng();
+        updateCoords(position.lat, position.lng);
+        reverseGeocode(position.lat, position.lng);
+      });
+      
+      map.on('click', function(e) {
+        marker.setLatLng(e.latlng);
+        updateCoords(e.latlng.lat, e.latlng.lng);
+        reverseGeocode(e.latlng.lat, e.latlng.lng);
+      });
+      
+      function updateCoords(lat, lng) {
+        latInput.value = lat.toFixed(6);
+        lngInput.value = lng.toFixed(6);
+      }
+      
+      document.getElementById('btn-geocode-search').addEventListener('click', function(e) {
+        e.preventDefault();
+        const address = areaInput.value.trim();
+        if (!address) return;
+        
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.length > 0) {
+              const result = data[0];
+              const lat = parseFloat(result.lat);
+              const lon = parseFloat(result.lon);
+              map.setView([lat, lon], 14);
+              marker.setLatLng([lat, lon]);
+              updateCoords(lat, lon);
+            } else {
+              alert("Location not found. Please try a different search query.");
+            }
+          })
+          .catch(err => {
+            console.error("Geocoding failed:", err);
+          });
+      });
+      
+      document.getElementById('btn-use-mylocation').addEventListener('click', function(e) {
+        e.preventDefault();
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(function(position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            map.setView([lat, lng], 15);
+            marker.setLatLng([lat, lng]);
+            updateCoords(lat, lng);
+            reverseGeocode(lat, lng);
+          }, function() {
+            alert("Could not retrieve geolocation.");
+          });
+        } else {
+          alert("Geolocation is not supported by your browser.");
+        }
+      });
+      
+      let geocodeTimeout;
+      function reverseGeocode(lat, lng) {
+        if (geocodeTimeout) clearTimeout(geocodeTimeout);
+        geocodeTimeout = setTimeout(() => {
+          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+            .then(res => res.json())
+            .then(data => {
+              if (data && data.address) {
+                const parts = data.address;
+                
+                const house = parts.house_number || parts.building || '';
+                const road = parts.road || '';
+                const suburb = parts.suburb || parts.neighbourhood || '';
+                const city = parts.city || parts.town || parts.village || '';
+                const state = parts.state || '';
+                const postcode = parts.postcode || '';
+                
+                if (road || suburb) {
+                  areaInput.value = [road, suburb].filter(Boolean).join(', ');
+                }
+                if (city) cityInput.value = city;
+                if (state) stateInput.value = state;
+                if (postcode) pinInput.value = postcode;
+              }
+            })
+            .catch(err => console.error("Reverse geocoding error:", err));
+        }, 800);
+      }
+      
+      const form = document.getElementById('address-form');
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const payload = {
+          house_number: document.getElementById('house_number').value.trim(),
+          area: areaInput.value.trim(),
+          city: cityInput.value.trim(),
+          state: stateInput.value.trim(),
+          pincode: pinInput.value.trim(),
+          latitude: parseFloat(latInput.value),
+          longitude: parseFloat(lngInput.value)
+        };
+        
+        if (!payload.house_number || !payload.area || !payload.city || !payload.state || !payload.pincode || isNaN(payload.latitude)) {
+          alert("Please fill in all address details and choose a location on the map.");
+          return;
+        }
+        
+        const deliveryId = "{{ delivery.id }}";
+        fetch(`/api/delivery/${deliveryId}/address`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            window.location.href = `/delivery/${deliveryId}/track`;
+          } else {
+            alert("Error: " + (data.error || "Failed to save address."));
+          }
+        })
+        .catch(err => {
+          console.error("Submission failed:", err);
+          alert("An error occurred. Please try again.");
+        });
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Securing Payout Portal — AuctionHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0f1016;
+      color: #f0f2f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    .loader-container {
+      text-align: center;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 50px;
+      height: 50px;
+      border: 3px solid #2a2d40;
+      border-top-color: #d4af37;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    p {
+      font-size: 14px;
+      color: #8b92b6;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="loader-container">
+    <div class="spinner"></div>
+    <h1>Redirecting to Razorpay</h1>
+    <p>Please do not close this window. Opening secure payment gateway...</p>
+  </div>
+
+  <form id="rzp-form" action="/wallet/razorpay/success" method="POST">
+    <input type="hidden" name="razorpay_payment_id" id="rzp-payment-id">
+    <input type="hidden" name="razorpay_order_id" id="rzp-order-id">
+    <input type="hidden" name="razorpay_signature" id="rzp-signature">
+  </form>
+
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script>
+    const options = {
+      "key": "{{ key_id }}",
+      "amount": {{ (amount * 100) | int }}, // Amount in paise (integer)
+      "currency": "INR",
+      "name": "AuctionHub",
+      "description": "Wallet top-up of ₹{{ '%.2f'|format(amount) }}",
+      "image": "https://static.vecteezy.com/system/resources/previews/022/360/251/large_2x/auction-solid-icons-simple-stock-illustration-stock-vector.jpg",
+      "order_id": "{{ order_id }}",
+      "handler": function (response) {
+        document.getElementById('rzp-payment-id').value = response.razorpay_payment_id;
+        document.getElementById('rzp-order-id').value = response.razorpay_order_id;
+        document.getElementById('rzp-signature').value = response.razorpay_signature;
+        document.getElementById('rzp-form').submit();
+      },
+      "prefill": {
+        "name": "{{ user_name }}",
+        "email": "{{ email }}",
+        "contact": "9398396286",
+        "method": "upi" // Opens UPI payment screen directly
+      },
+      "theme": {
+        "color": "#d4af37"
+      },
+      "modal": {
+        "ondismiss": function() {
+          window.location.href = '/wallet';
+        }
+      }
+    };
+    
+    try {
+      const rzp = new Razorpay(options);
+      rzp.on('payment.failed', function (response){
+        console.error('Razorpay payment failed:', response.error);
+        alert('Payment failed: ' + response.error.description);
+      });
+      rzp.open();
+    } catch (e) {
+      console.error('Error opening Razorpay modal:', e);
+      alert('Could not launch Razorpay Gateway. Redirecting to Wallet.');
+      window.location.href = '/wallet';
+    }
+  </script>
+</body>
+
+</html>

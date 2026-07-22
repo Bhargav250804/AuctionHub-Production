@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Gateway — AuctionHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0f1016;
+      --card-bg: #161824;
+      --gold: #d4af37;
+      --gold-hover: #f3cf58;
+      --text: #f0f2f5;
+      --text-muted: #8b92b6;
+      --border: #2a2d40;
+      --success: #10b981;
+      --error: #ef4444;
+      --blue: #3b82f6;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .checkout-container {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      overflow: hidden;
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .checkout-header {
+      background: linear-gradient(135deg, #1e1b4b, #111827);
+      padding: 24px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+    }
+
+    .checkout-header::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    }
+
+    .brand-logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      text-decoration: none;
+      margin-bottom: 12px;
+    }
+
+    .brand-logo span { color: var(--gold); }
+
+    .brand-logo img {
+      width: 24px; height: 24px;
+      border-radius: 4px;
+    }
+
+    .checkout-title {
+      font-size: 16px;
+      color: var(--text-muted);
+      font-weight: 400;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+
+    .checkout-body { padding: 32px 24px; }
+
+    .amount-display {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .amount-label {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .amount-val {
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* Payment method badge */
+    .method-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 10px;
+      letter-spacing: 0.3px;
+    }
+    .method-badge-card {
+      background: rgba(59,130,246,.12);
+      color: #93b8f9;
+      border: 1px solid rgba(59,130,246,.25);
+    }
+    .method-badge-upi {
+      background: rgba(16,185,129,.12);
+      color: #6ee7b7;
+      border: 1px solid rgba(16,185,129,.25);
+    }
+    .method-badge-netbanking {
+      background: rgba(168,85,247,.12);
+      color: #c4b5fd;
+      border: 1px solid rgba(168,85,247,.25);
+    }
+
+    .sandbox-notice {
+      background-color: rgba(59, 130, 246, 0.08);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      color: rgba(224, 231, 255, 0.9);
+      border-radius: 8px;
+      padding: 14px;
+      font-size: 13px;
+      line-height: 1.5;
+      margin-bottom: 24px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .sandbox-notice svg {
+      flex-shrink: 0;
+      color: var(--blue);
+      margin-top: 2px;
+    }
+
+    .form-group { margin-bottom: 20px; }
+
+    .form-row { display: flex; gap: 16px; }
+    .form-row .form-group { flex: 1; }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .input-field {
+      width: 100%;
+      background-color: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .input-field:focus {
+      border-color: var(--gold);
+      background-color: rgba(255, 255, 255, 0.05);
+      box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
+    }
+
+    .input-field:disabled {
+      color: var(--text-muted);
+      cursor: not-allowed;
+    }
+
+    select.input-field {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%238b92b6' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+      background-position: right 12px center;
+      background-repeat: no-repeat;
+      background-size: 16px 12px;
+    }
+
+    .pay-button {
+      background-color: var(--gold);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      width: 100%;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      margin-top: 12px;
+    }
+
+    .pay-button:hover:not(:disabled) {
+      background-color: var(--gold-hover);
+      transform: translateY(-1px);
+    }
+
+    .pay-button:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+
+    .pay-button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .cancel-link {
+      display: block;
+      text-align: center;
+      margin-top: 18px;
+      color: var(--text-muted);
+      font-size: 14px;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .cancel-link:hover { color: var(--text); }
+
+    /* ── QR Code Section ── */
+    .qr-section {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .qr-wrapper {
+      display: inline-block;
+      padding: 12px;
+      background: #ffffff;
+      border-radius: 16px;
+      margin: 16px auto;
+      box-shadow: 0 8px 32px rgba(0,0,0,.3);
+      position: relative;
+    }
+
+    .qr-wrapper img {
+      width: 220px;
+      height: auto;
+      display: block;
+      border-radius: 8px;
+    }
+
+    .qr-instruction {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-top: 16px;
+      line-height: 1.6;
+    }
+
+    .qr-instruction strong {
+      color: var(--text);
+    }
+
+    .qr-steps {
+      text-align: left;
+      margin: 18px 0 6px;
+      padding: 0;
+      list-style: none;
+      counter-reset: qr-step;
+    }
+
+    .qr-steps li {
+      counter-increment: qr-step;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 0;
+      font-size: 13px;
+      color: var(--text-muted);
+      border-bottom: 1px solid rgba(255,255,255,.04);
+    }
+
+    .qr-steps li:last-child {
+      border-bottom: none;
+    }
+
+    .qr-step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(212,175,55,.15);
+      color: var(--gold);
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .qr-upi-id {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 16px;
+      margin-top: 12px;
+      font-size: 14px;
+      color: var(--gold);
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    .qr-upi-id .copy-btn {
+      background: rgba(212,175,55,.15);
+      border: none;
+      color: var(--gold);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: .2s;
+    }
+
+    .qr-upi-id .copy-btn:hover {
+      background: rgba(212,175,55,.3);
+    }
+
+    .payment-done-notice {
+      background: rgba(16,185,129,.08);
+      border: 1px solid rgba(16,185,129,.2);
+      border-radius: 8px;
+      padding: 14px;
+      font-size: 13px;
+      color: rgba(167,243,208,.9);
+      margin-top: 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      line-height: 1.5;
+    }
+
+    .payment-done-notice svg {
+      flex-shrink: 0;
+      margin-top: 2px;
+      color: var(--success);
+    }
+
+    /* Loading Spinner */
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid #000;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Payment method section title */
+    .pm-section-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .pm-section-title span { font-size: 18px; }
+  </style>
+</head>
+
+<body>
+  <div class="checkout-container">
+    <div class="checkout-header">
+      <a href="/index.html" class="brand-logo">
+        <img src="https://static.vecteezy.com/system/resources/previews/022/360/251/large_2x/auction-solid-icons-simple-stock-illustration-stock-vector.jpg" alt="AuctionHub">
+        Auction<span>Hub</span>
+      </a>
+      <div class="checkout-title">Payment Gateway</div>
+    </div>
+
+    <div class="checkout-body">
+      <div class="amount-display">
+        <div class="amount-label">Amount to Deposit</div>
+        <div class="amount-val">₹{{ "%.2f"|format(amount) }}</div>
+        {% if payment_method == 'upi' %}
+        <div class="method-badge method-badge-upi">📱 UPI Payment</div>
+        {% else %}
+        <div class="method-badge method-badge-card">💳 Card Payment</div>
+        {% endif %}
+      </div>
+
+      {% if payment_method == 'upi' %}
+      <form id="payment-form" action="/wallet/success" method="GET">
+        <input type="hidden" name="session_id" value="{{ session_id }}">
+        <!-- ═══ UPI Payment — Show Admin QR Code ═══ -->
+        <div class="pm-section-title"><span>📱</span> Scan & Pay via UPI</div>
+
+        <div class="qr-section">
+          <div class="qr-wrapper">
+            <img src="{{ qr_url }}" alt="UPI QR Code — Scan to Pay">
+          </div>
+          
+          <div class="payment-done-notice" style="justify-content: center; background: rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.2); color: #a7f3d0; margin-top: 15px;">
+            <div style="text-align: center; width: 100%;">
+              <span class="spinner" id="auto-spinner" style="display: inline-block; border-color: var(--success); border-top-color: transparent; margin-bottom: 8px;"></span>
+              <div id="countdown-text" style="font-weight: 500; font-size: 14px;">Simulating secure callback... Redirecting in 5s</div>
+            </div>
+          </div>
+        </div>
+
+      {% else %}
+      <form id="payment-form" action="/wallet/success" method="GET">
+        <input type="hidden" name="session_id" value="{{ session_id }}">
+        <!-- ═══ Card Payment Form (default) ═══ -->
+        <div class="pm-section-title"><span>💳</span> Card Details</div>
+
+        <div class="form-group">
+          <label for="card-holder">Cardholder Name</label>
+          <input type="text" id="card-holder" class="input-field" value="Test Developer" required>
+        </div>
+
+        <div class="form-group">
+          <label for="card-number">Card Number</label>
+          <input type="text" id="card-number" class="input-field" value="4242  4242  4242  4242" disabled>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="card-expiry">Expiry Date</label>
+            <input type="text" id="card-expiry" class="input-field" value="12 / 30" disabled>
+          </div>
+          <div class="form-group">
+            <label for="card-cvc">CVC</label>
+            <input type="text" id="card-cvc" class="input-field" value="123" disabled>
+          </div>
+        </div>
+
+        <button type="submit" class="pay-button" id="submit-btn">
+          <span class="spinner" id="btn-spinner"></span>
+          <span id="btn-text">Authorize & Pay ₹{{ "%.2f"|format(amount) }}</span>
+        </button>
+        {% endif %}
+      </form>
+
+      <a href="/wallet/cancel" class="cancel-link">Cancel & Return</a>
+    </div>
+  </div>
+
+  <script>
+    const isUpi = "{{ payment_method }}" === "upi";
+    const paymentForm = document.getElementById('payment-form');
+
+    if (isUpi && paymentForm) {
+      let secondsLeft = 5;
+      const countdownText = document.getElementById('countdown-text');
+      const timer = setInterval(() => {
+        secondsLeft--;
+        if (secondsLeft > 0) {
+          if (countdownText) countdownText.innerText = `Simulating secure callback... Redirecting in ${secondsLeft}s`;
+        } else {
+          clearInterval(timer);
+          if (countdownText) countdownText.innerText = `✅ Payment Confirmed! Redirecting...`;
+          
+          // Submit form automatically to credit user's wallet
+          setTimeout(() => {
+            paymentForm.submit();
+          }, 800);
+        }
+      }, 1000);
+    }
+
+    if (paymentForm) {
+      paymentForm.addEventListener('submit', function (e) {
+        if (isUpi) return; // Prevent double submission for UPI
+
+        e.preventDefault();
+        const submitBtn = document.getElementById('submit-btn');
+        const spinner = document.getElementById('btn-spinner');
+        const btnText = document.getElementById('btn-text');
+        
+        if (submitBtn) submitBtn.disabled = true;
+        if (spinner) spinner.style.display = 'inline-block';
+        if (btnText) btnText.innerText = "Processing card authorization...";
+        
+        setTimeout(() => {
+          this.submit();
+        }, 1500);
+      });
+    }
+  </script>
+</body>
+
+</html>

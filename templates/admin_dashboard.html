@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — AuctionHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+  <nav>
+    <div class="nav-inner">
+      <a href="/index.html" class="nav-brand">
+        <img
+          src="https://static.vecteezy.com/system/resources/previews/022/360/251/large_2x/auction-solid-icons-simple-stock-illustration-stock-vector.jpg"
+          alt="AuctionHub" class="nav-logo">
+        Auction<span>Hub</span>
+      </a>
+
+      <form method="GET" action="/active_auctions.html" class="nav-search" id="nav-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+          <circle cx="11" cy="11" r="8" />
+          <path d="m21 21-4.35-4.35" />
+        </svg>
+        <input type="text" name="search" placeholder="Search for unique items..." class="nav-search-input"
+          autocomplete="off">
+      </form>
+
+      <button class="nav-toggle" id="nav-toggle" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+
+      <div class="nav-menu" id="nav-menu">
+        <a href="/active_auctions.html" class="nav-link">
+          <img src="/static/images/MyAuctions.png" alt="" class="nav-icon"> Auctions
+        </a>
+
+        <a href="/create_auction.html" class="nav-link auth-only">
+          <img src="/static/images/Create.png" alt="" class="nav-icon"> Create
+        </a>
+
+        <div class="nav-dropdown auth-only" id="activity-dropdown">
+          <button class="nav-link nav-dd-trigger" id="activity-trigger">
+            <img src="/static/images/activity.png" alt="" class="nav-icon"> Activity ▾
+          </button>
+          <div class="nav-dd-menu" id="activity-menu">
+            <a href="/my_auctions.html" class="nav-dd-item">
+              <img src="/static/images/MyAuctions.png" alt="" class="nav-icon"> My Auctions
+            </a>
+            <a href="/my_bids.html" class="nav-dd-item">
+              <img src="/static/images/MyBids.png" alt="" class="nav-icon"> My Bids
+            </a>
+          </div>
+        </div>
+
+        <a href="/wallet" class="nav-link auth-only nav-wallet-link">
+          💰 Wallet <span class="nav-wallet-badge" id="nav-wallet-badge">₹0</span>
+        </a>
+
+        <a href="/admin" class="nav-link admin-only nav-admin-link">
+          🛡️ Admin
+        </a>
+
+        <a href="/faq.html" class="nav-link">
+          <img src="/static/images/faq.png" alt="" class="nav-icon"> FAQ'S
+        </a>
+
+        <!-- Profile avatar dropdown -->
+        <div class="profile-dropdown" id="profile-dropdown">
+          <button class="profile-trigger" id="profile-trigger" aria-label="Profile menu">
+            <div class="profile-avatar profile-avatar-default">G</div>
+          </button>
+          <div class="profile-menu" id="profile-menu">
+            <div class="pm-header">
+              <div class="pm-avatar pm-avatar-default">G</div>
+              <div>
+                <div class="pm-name">Guest</div>
+                <div class="pm-role">Guest</div>
+              </div>
+            </div>
+            <div class="pm-divider"></div>
+            <a href="/profile.html" class="pm-item pm-item-user">👤 My Profile</a>
+            <a href="/wallet" class="pm-item pm-item-user">💰 My Wallet</a>
+            <div class="pm-divider pm-item-user"></div>
+            <a href="/logout" class="pm-item pm-logout pm-item-user">→ Logout</a>
+
+            <a href="/login.html" class="pm-item pm-item-auth">🔑 Sign In</a>
+            <a href="/register.html" class="pm-item pm-item-auth">✨ Join Hub</a>
+          </div>
+        </div>
+
+        <a href="/register.html" class="btn btn-gold btn-sm pm-item-auth">Join Now</a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <section class="admin-hero">
+      <div class="container">
+        <div class="admin-hero-inner">
+          <div>
+            <h1 class="admin-title">🛡️ Admin Dashboard</h1>
+            <p class="admin-subtitle">Full control over AuctionHub — users, auctions, finances & settings</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab Navigation -->
+    <div class="admin-tabs">
+      <div class="container">
+        <div class="admin-tab-bar">
+          <button class="admin-tab active" data-tab="overview">📊 Overview</button>
+          <button class="admin-tab" data-tab="users">👥 Users</button>
+          <button class="admin-tab" data-tab="auctions">🔨 Auctions</button>
+          <button class="admin-tab" data-tab="transactions">💳 Transactions</button>
+          <button class="admin-tab" data-tab="deposits">📥 Deposits</button>
+          <button class="admin-tab" data-tab="withdrawals">📤 Withdrawals</button>
+          <button class="admin-tab" data-tab="settings">⚙️ Settings</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="container admin-content">
+
+      <!-- Overview Tab -->
+      <div class="admin-panel active" id="panel-overview">
+        <div class="admin-stats-grid" id="admin-stats-grid">
+          <div class="admin-stat-card">
+            <div class="asc-icon">👥</div>
+            <div class="asc-value" id="stat-total-users">—</div>
+            <div class="asc-label">Total Users</div>
+          </div>
+          <div class="admin-stat-card">
+            <div class="asc-icon">🔨</div>
+            <div class="asc-value" id="stat-total-auctions">—</div>
+            <div class="asc-label">Total Auctions</div>
+          </div>
+          <div class="admin-stat-card asc-highlight">
+            <div class="asc-icon">📡</div>
+            <div class="asc-value" id="stat-active-auctions">—</div>
+            <div class="asc-label">Active Auctions</div>
+          </div>
+          <div class="admin-stat-card">
+            <div class="asc-icon">✅</div>
+            <div class="asc-value" id="stat-settled-auctions">—</div>
+            <div class="asc-label">Settled Auctions</div>
+          </div>
+          <div class="admin-stat-card asc-gold">
+            <div class="asc-icon">💰</div>
+            <div class="asc-value" id="stat-total-revenue">—</div>
+            <div class="asc-label">Total Revenue</div>
+          </div>
+          <div class="admin-stat-card asc-gold">
+            <div class="asc-icon">🏦</div>
+            <div class="asc-value" id="stat-platform-earnings">—</div>
+            <div class="asc-label">Platform Earnings</div>
+          </div>
+          <div class="admin-stat-card">
+            <div class="asc-icon">💳</div>
+            <div class="asc-value" id="stat-total-deposits">—</div>
+            <div class="asc-label">Total Deposits</div>
+          </div>
+          <div class="admin-stat-card asc-highlight">
+            <div class="asc-icon">🏛️</div>
+            <div class="asc-value" id="stat-admin-balance">—</div>
+            <div class="asc-label">Admin Wallet</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Users Tab -->
+      <div class="admin-panel" id="panel-users">
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="admin-users-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Wallet</th>
+                <th>Status</th>
+                <th>Joined</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admin-users-tbody">
+              <tr>
+                <td colspan="8" class="admin-loading">Loading users...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Auctions Tab -->
+      <div class="admin-panel" id="panel-auctions">
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="admin-auctions-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Item</th>
+                <th>Host</th>
+                <th>Current Price</th>
+                <th>Bids</th>
+                <th>Status</th>
+                <th>Winner</th>
+                <th>Fees</th>
+                <th>Host Payout</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admin-auctions-tbody">
+              <tr>
+                <td colspan="10" class="admin-loading">Loading auctions...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Transactions Tab -->
+      <div class="admin-panel" id="panel-transactions">
+        <div class="admin-filter-bar">
+          <select id="txn-filter-category" class="admin-select">
+            <option value="">All Categories</option>
+            <option value="deposit">Deposits</option>
+            <option value="bid_escrow">Bid Escrows</option>
+            <option value="bid_refund">Bid Refunds</option>
+            <option value="auction_win">Auction Wins</option>
+            <option value="platform_fee">Platform Fees</option>
+            <option value="processing_fee">Processing Fees</option>
+            <option value="host_payout">Host Payouts</option>
+          </select>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="admin-txn-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>User</th>
+                <th>Amount</th>
+                <th>Type</th>
+                <th>Category</th>
+                <th>Description</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="admin-txn-tbody">
+              <tr>
+                <td colspan="7" class="admin-loading">Loading transactions...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Deposits Tab -->
+      <div class="admin-panel" id="panel-deposits">
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="admin-deposits-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>User</th>
+                <th>Amount</th>
+                <th>Method</th>
+                <th>UTR / Ref No.</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admin-deposits-tbody">
+              <tr>
+                <td colspan="8" class="admin-loading">Loading deposits...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Withdrawals Tab -->
+      <div class="admin-panel" id="panel-withdrawals">
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="admin-withdrawals-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>User</th>
+                <th>Amount</th>
+                <th>Method</th>
+                <th>Payment Details</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admin-withdrawals-tbody">
+              <tr>
+                <td colspan="8" class="admin-loading">Loading withdrawals...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Settings Tab -->
+      <div class="admin-panel" id="panel-settings">
+        <div class="admin-settings-card">
+          <h2 class="admin-settings-title">⚙️ Platform Settings</h2>
+          <form id="admin-settings-form" class="admin-settings-form">
+            <div class="admin-field">
+              <label>Platform Fee (%)</label>
+              <input type="number" step="0.1" min="0" max="50" id="setting-platform-fee" class="input" value="5.0">
+            </div>
+            <div class="admin-field">
+              <label>Processing Fee (%)</label>
+              <input type="number" step="0.1" min="0" max="50" id="setting-processing-fee" class="input" value="2.0">
+            </div>
+            <div class="admin-field">
+              <label>Minimum Deposit (₹)</label>
+              <input type="number" step="1" min="1" id="setting-min-deposit" class="input" value="100">
+            </div>
+            <button type="submit" class="btn btn-gold">Save Settings</button>
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <div>
+        <div class="footer-brand">
+          <img
+            src="https://static.vecteezy.com/system/resources/previews/022/360/251/large_2x/auction-solid-icons-simple-stock-illustration-stock-vector.jpg"
+            alt="AuctionHub" class="nav-logo"
+            style="width: 24px; height: 24px; vertical-align: middle; margin-right: 8px;">
+          Auction<span>Hub</span>
+        </div>
+        <p class="footer-tagline">The premier destination for online auctions.</p>
+      </div>
+      <div>
+        <div class="footer-heading">Quick Links</div>
+        <ul class="footer-links">
+          <li><a href="/active_auctions.html">Browse Auctions</a></li>
+          <li><a href="/faq.html">FAQ</a></li>
+          <li><a href="/admin">Admin Dashboard</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-heading">Contact Us</div>
+        <ul class="footer-links footer-contact">
+          <li><img src="/static/images/email.png" alt="" class="contact-icon"> <a
+              href="mailto:support@auctionHub.com">support@auctionHub.com</a></li>
+          <li><img src="/static/images/phone-call.png" alt="" class="contact-icon"> <a href="tel:+919398582839">+91
+              9398582839</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-heading">Legal</div>
+        <ul class="footer-links">
+          <li><a href="/terms.html">Terms & Conditions</a></li>
+          <li><a href="/privacy.html">Privacy Policy</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">&copy; 2024 AuctionHub. All rights reserved.</div>
+  </footer>
+
+  <script src="/static/js/script.js"></script>
+  <script src="/static/js/dynamic_ui.js"></script>
+</body>
+
+</html>

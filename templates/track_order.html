@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Track Order #{{ delivery.id }} — AuctionHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-CNgIRecGo7nOMQVqgTCffYd1Oh5m15qEJm2cPLxCo3hUXZoTwFKuxqnpgqEX0V9tb5DM7yLMfRCQRhWqPQ+E1A==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="/home" class="nav-brand">
+        <img src="https://static.vecteezy.com/system/resources/previews/022/360/251/large_2x/auction-solid-icons-simple-stock-illustration-stock-vector.jpg" alt="AuctionHub" class="nav-logo">
+        Auction<span>Hub</span>
+      </a>
+      <div class="nav-menu" id="nav-menu">
+        <a href="/active-auctions" class="nav-link">Auctions</a>
+        <a href="/my-bids" class="nav-link active">Activity</a>
+        <a href="/wallet" class="nav-link">Wallet</a>
+        <a href="/profile" class="nav-link">Profile</a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container dash-page" style="margin-top: 40px; max-width: 900px;">
+      <a href="/my-bids" class="page-back">← Back to My Bids</a>
+      
+      <div class="page-header" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-end;">
+        <div>
+          <h1 class="page-title" style="margin: 0;">Track Delivery</h1>
+          <p class="page-sub" style="margin: 4px 0 0 0;">Shipment ID: <strong>#{{ delivery.id }}</strong> | Item: <strong>{{ delivery.item_name }}</strong></p>
+        </div>
+        <span class="badge" id="delivery-status-badge" style="padding: 6px 14px; font-weight: 700; font-size: 0.85rem; text-transform: uppercase;"></span>
+      </div>
+
+      <!-- Timeline Card -->
+      <div class="delivery-tracker-card">
+        <div class="delivery-timeline">
+          <div class="delivery-timeline-progress" id="timeline-progress"></div>
+          
+          <div class="timeline-step" id="step-pending">
+            <div class="step-icon">📝</div>
+            <div class="step-label">Pending Address</div>
+          </div>
+          
+          <div class="timeline-step" id="step-ready">
+            <div class="step-icon">📦</div>
+            <div class="step-label">Awaiting Pickup</div>
+          </div>
+          
+          <div class="timeline-step" id="step-shipping">
+            <div class="step-icon">🚚</div>
+            <div class="step-label">On The Way</div>
+          </div>
+          
+          <div class="timeline-step" id="step-delivered">
+            <div class="step-icon">🏆</div>
+            <div class="step-label">Delivered</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Map & Details Grid -->
+      <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px;">
+        <!-- Map Panel -->
+        <div>
+          <div class="detail-map-box" style="margin-top: 0; padding: 16px; background: var(--card); border: 1px solid var(--border2); border-radius: var(--r3);">
+            <div class="detail-map-title">📍 Transit Route Map</div>
+            <div id="routing-map" style="height: 380px; border-radius: var(--r2);"></div>
+          </div>
+        </div>
+
+        <!-- QR & Info Panel -->
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+          <!-- QR Card -->
+          <div class="qr-container" id="qr-card-container">
+            <h3 style="margin-top:0; font-family:'Playfair Display',serif; font-size:1.1rem; color:#fff;">Delivery Confirmation</h3>
+            <p style="font-size:0.75rem; color:var(--text3); margin: 0 0 16px 0;">Show this QR Code to the delivery agent upon receiving your package.</p>
+            <div class="qr-code-box" id="qrcode"></div>
+            <div class="qr-hint" id="qr-token-label">Code: delivery_verify_{{ delivery.id }}</div>
+          </div>
+
+          <!-- Shipping Details Card -->
+          <div class="delivery-tracker-card" style="padding: 24px; margin-bottom: 0;">
+            <h3 style="margin-top:0; margin-bottom:12px; font-family:'Playfair Display',serif; font-size:1.1rem; color:#fff;">Shipping Info</h3>
+            <div style="display:flex; flex-direction:column; gap:10px; font-size:0.85rem; color:var(--text2);">
+              <div><strong>Seller / Origin:</strong> <span style="color:var(--text);">{{ delivery.host_name }}</span></div>
+              <div><strong>Recipient Address:</strong>
+                <div style="color:var(--text); margin-top:4px; line-height:1.4;">
+                  {{ delivery.house_number }}, {{ delivery.area }}<br>
+                  {{ delivery.city }}, {{ delivery.state }} - {{ delivery.pincode }}
+                </div>
+              </div>
+              <div id="agent-info-row" style="display:none; border-top: 1px solid var(--border2); padding-top: 10px; margin-top: 5px;">
+                <strong>Assigned Agent:</strong> <span id="agent-name" style="color:var(--text);"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer style="margin-top: 60px;">
+    <div class="footer-bottom">&copy; 2024 AuctionHub. All rights reserved.</div>
+  </footer>
+
+  <script src="/static/js/script.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const deliveryId = "{{ delivery.id }}";
+      
+      fetch(`/api/delivery/${deliveryId}`)
+        .then(res => res.json())
+        .then(d => {
+          updateUI(d);
+          initRouteMap(d);
+        })
+        .catch(err => console.error("Failed to load delivery info:", err));
+        
+      function updateUI(d) {
+        const badge = document.getElementById('delivery-status-badge');
+        badge.innerText = d.status.replace(/_/g, ' ');
+        
+        const colors = {
+          'address_pending': '#e67e22',
+          'ready_for_dispatch': '#f1c40f',
+          'out_for_delivery': '#3498db',
+          'delivered': '#2ecc71'
+        };
+        badge.style.backgroundColor = colors[d.status] || 'var(--gold)';
+        badge.style.color = d.status === 'address_pending' ? '#fff' : '#000';
+        
+        const steps = ['address_pending', 'ready_for_dispatch', 'out_for_delivery', 'delivered'];
+        const currentIdx = steps.indexOf(d.status);
+        const progressEl = document.getElementById('timeline-progress');
+        
+        let progressWidth = 0;
+        if (currentIdx === 1) progressWidth = 33;
+        else if (currentIdx === 2) progressWidth = 66;
+        else if (currentIdx === 3) progressWidth = 100;
+        progressEl.style.width = progressWidth + '%';
+        
+        if (currentIdx >= 0) {
+          document.getElementById('step-pending').classList.add('completed');
+        }
+        if (currentIdx >= 1) {
+          document.getElementById('step-ready').classList.add('completed');
+        }
+        if (currentIdx >= 2) {
+          document.getElementById('step-shipping').classList.add('completed');
+        } else if (currentIdx === 1) {
+          document.getElementById('step-shipping').classList.add('active');
+        }
+        if (currentIdx >= 3) {
+          document.getElementById('step-delivered').classList.add('completed');
+          document.getElementById('qr-card-container').style.display = 'none';
+        } else if (currentIdx === 2) {
+          document.getElementById('step-delivered').classList.add('active');
+        }
+        
+        if (d.status !== 'delivered') {
+          const verifyToken = `delivery_verify_${d.id}`;
+          new QRCode(document.getElementById("qrcode"), {
+            text: verifyToken,
+            width: 140,
+            height: 140,
+            colorDark : "#000000",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.H
+          });
+          document.getElementById('qr-token-label').innerText = `Verification ID: ${d.id}`;
+        }
+        
+        if (d.delivery_boy_name) {
+          document.getElementById('agent-info-row').style.display = 'block';
+          document.getElementById('agent-name').innerText = d.delivery_boy_name;
+        }
+      }
+      
+      function initRouteMap(d) {
+        const originLat = parseFloat(d.origin_lat || 16.3067);
+        const originLng = parseFloat(d.origin_lng || 80.4365);
+        const destLat = parseFloat(d.latitude);
+        const destLng = parseFloat(d.longitude);
+        
+        const map = L.map('routing-map');
+        
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+          subdomains: 'abcd',
+          maxZoom: 20
+        }).addTo(map);
+        
+        const sellerMarker = L.marker([originLat, originLng]).addTo(map)
+          .bindPopup(`<strong>Seller Hub (Origin)</strong><br>${d.host_name}`);
+          
+        const winnerMarker = L.marker([destLat, destLng]).addTo(map)
+          .bindPopup(`<strong>Delivery Address (Destination)</strong><br>${d.house_number}, ${d.area}`);
+          
+        const routeLine = L.polyline([[originLat, originLng], [destLat, destLng]], {
+          color: 'var(--gold)',
+          weight: 4,
+          opacity: 0.8,
+          dashArray: '8, 8'
+        }).addTo(map);
+        
+        const bounds = L.latLngBounds([[originLat, originLng], [destLat, destLng]]);
+        map.fitBounds(bounds, { padding: [50, 50] });
+        
+        if (d.status === 'out_for_delivery') {
+          const midLat = (originLat + destLat) / 2;
+          const midLng = (originLng + destLng) / 2;
+          
+          const truckIcon = L.divIcon({
+            html: '<div style="font-size: 24px; filter: drop-shadow(0 0 4px rgba(0,0,0,0.6));">🚚</div>',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+          });
+          
+          L.marker([midLat, midLng], { icon: truckIcon }).addTo(map)
+            .bindPopup(`<strong>Delivery Boy On The Way</strong>`)
+            .openPopup();
+        }
+      }
+    });
+  </script>
+</body>
+</html>
