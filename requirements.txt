@@ -3,4 +3,5 @@ authlib
 requests
 stripe
 razorpay
-
+gunicorn
+python-dotenv

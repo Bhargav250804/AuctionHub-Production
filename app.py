@@ -11,7 +11,7 @@ load_dotenv()
 os.environ['AUTHLIB_INSECURE_TRANSPORT'] = 'true'
 
 app = Flask(__name__)
-app.secret_key = 'auctionvault_secret_2024'
+app.secret_key = os.getenv('SECRET_KEY', 'auctionvault_secret_2024')
 
 DATABASE = 'database.db'
 UPLOAD_FOLDER = 'static/images/uploads'
@@ -2110,6 +2110,9 @@ def admin_set_user_role(user_id):
     return jsonify({'success': True, 'role': role})
 
 
+# Initialize DB on module import (needed for gunicorn)
+init_db()
+
 if __name__ == '__main__':
-    init_db()
-    app.run(debug=True, port=5001)
+    port = int(os.getenv('PORT', 5001))
+    app.run(debug=True, host='0.0.0.0', port=port)
