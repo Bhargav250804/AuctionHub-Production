@@ -65,6 +65,22 @@
           💰 Wallet <span class="nav-wallet-badge" id="nav-wallet-badge">₹0</span>
         </a>
 
+        <!-- Notification bell dropdown -->
+        <div class="nav-dropdown auth-only" id="notif-dropdown" style="position: relative;">
+          <button class="nav-link nav-dd-trigger" id="notif-trigger" style="position: relative; display: flex; align-items: center; gap: 4px;">
+            🔔 <span class="nav-wallet-badge" id="nav-notif-badge" style="background: var(--error); color: #fff; font-size: 0.7rem; padding: 2px 6px; border-radius: 10px; display: none;">0</span>
+          </button>
+          <div class="nav-dd-menu" id="notif-menu" style="width: 320px; max-height: 400px; overflow-y: auto; padding: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid var(--border2); padding-bottom: 6px;">
+              <strong style="font-size: 0.85rem; color: var(--text);">Notifications</strong>
+              <a href="/notifications.html" style="font-size: 0.75rem; color: var(--gold); text-decoration: none;">View All →</a>
+            </div>
+            <div id="notif-dd-list">
+              <div style="font-size: 0.8rem; color: var(--text3); text-align: center; padding: 12px;">Loading...</div>
+            </div>
+          </div>
+        </div>
+
         <a href="/admin" class="nav-link admin-only nav-admin-link">
           🛡️ Admin
         </a>

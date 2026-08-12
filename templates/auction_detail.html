@@ -202,7 +202,7 @@
               <div id="host-notice" class="own-notice" style="display:none">ℹ️ You are hosting this auction — you cannot bid.</div>
 
               <!-- Actual Form -->
-              <form method="POST" action="/place-bid" id="bid-form" class="pm-item-user" style="display:none">
+              <form method="POST" action="/place-bid" id="bid-form" style="display:none">
                 <input type="hidden" name="auction_id" id="form-auction-id">
                 <label class="form-label">Your Bid Amount</label>
                 <div class="dollar-wrap" style="margin-bottom:6px">
@@ -230,6 +230,53 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    <!-- Insufficient Funds Modal Popup -->
+    <div id="insufficient-funds-modal" class="custom-modal-overlay" style="display:none;">
+      <div class="custom-modal-card">
+        <button type="button" class="custom-modal-close" onclick="closeFundsModal()">&times;</button>
+        <div class="modal-icon-badge warning">⚠️</div>
+        <h3 class="modal-title">Insufficient Wallet Balance</h3>
+        <p class="modal-subtitle">You don't have enough funds in your wallet to place this bid.</p>
+        
+        <div class="funds-summary-box">
+          <div class="funds-summary-row">
+            <span>Your Available Balance:</span>
+            <strong id="modal-wallet-balance">₹0.00</strong>
+          </div>
+          <div class="funds-summary-row">
+            <span>Required Escrow for Bid:</span>
+            <strong id="modal-required-amt" style="color:var(--gold);">₹0.00</strong>
+          </div>
+          <div class="funds-summary-row highlight">
+            <span>Shortfall Needed:</span>
+            <strong id="modal-shortfall-amt" style="color:#e74c3c;">₹0.00</strong>
+          </div>
+        </div>
+        
+        <div class="modal-actions">
+          <a href="/wallet" class="btn btn-gold btn-full modal-btn-primary">
+            💰 Add Funds to Wallet
+          </a>
+          <button type="button" class="btn btn-outline btn-full" onclick="closeFundsModal()">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bid Success Modal Popup -->
+    <div id="bid-success-modal" class="custom-modal-overlay" style="display:none;">
+      <div class="custom-modal-card">
+        <button type="button" class="custom-modal-close" onclick="closeSuccessModal()">&times;</button>
+        <div class="modal-icon-badge success">🔨</div>
+        <h3 class="modal-title">Bid Placed Successfully!</h3>
+        <p class="modal-subtitle" id="modal-success-msg">Your bid has been recorded.</p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-gold btn-full" onclick="closeSuccessModal()">
+            Great! Continue
+          </button>
         </div>
       </div>
     </div>

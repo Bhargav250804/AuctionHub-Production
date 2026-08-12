@@ -35,17 +35,46 @@
 
       <div class="form-card">
         <form id="address-form" novalidate>
+          <!-- Section 01: Recipient Details -->
           <div class="form-section">
             <div class="fs-header">
               <div class="fs-step">01</div>
+              <div>
+                <div class="fs-title">Recipient Details</div>
+                <div class="fs-sub">Who will be receiving the item?</div>
+              </div>
+            </div>
+            <div class="form-row" style="display: flex; gap: 16px;">
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Full Name <span class="req">*</span></label>
+                <input type="text" id="full_name" class="input" placeholder="e.g. Bhargav Venkata" required>
+              </div>
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Mobile Number <span class="req">*</span></label>
+                <div style="display: flex; align-items: center; gap: 0;">
+                  <span style="background: var(--card2); border: 1px solid var(--border2); border-right: none; border-radius: var(--r2) 0 0 var(--r2); padding: 11px 12px; font-size: 14px; color: var(--text2); white-space: nowrap;">+91</span>
+                  <input type="tel" id="mobile" class="input" placeholder="e.g. 9398396286" maxlength="10" pattern="[0-9]{10}" required style="border-radius: 0 var(--r2) var(--r2) 0;">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 02: Postal Address -->
+          <div class="form-section">
+            <div class="fs-header">
+              <div class="fs-step">02</div>
               <div>
                 <div class="fs-title">Postal Address</div>
                 <div class="fs-sub">Where should we deliver the item?</div>
               </div>
             </div>
             <div class="form-group">
-              <label class="form-label">House / Flat / Door Number <span class="req">*</span></label>
+              <label class="form-label">Address Line 1 (House / Flat / Door No.) <span class="req">*</span></label>
               <input type="text" id="house_number" class="input" placeholder="e.g. Door No. 4-12, Flat 302" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Address Line 2 (Floor, Building, Colony)</label>
+              <input type="text" id="address_line_2" class="input" placeholder="e.g. 3rd Floor, Sai Residency">
             </div>
             <div class="form-group">
               <label class="form-label">Area / Street / Locality <span class="req">*</span></label>
@@ -64,15 +93,26 @@
                 <input type="text" id="state" class="input" placeholder="e.g. Andhra Pradesh" required>
               </div>
             </div>
+            <div class="form-row" style="display: flex; gap: 16px; margin-top: 15px;">
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Pin Code <span class="req">*</span></label>
+                <input type="text" id="pincode" class="input" placeholder="e.g. 522007" maxlength="6" required>
+              </div>
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Country <span class="req">*</span></label>
+                <input type="text" id="country" class="input" value="India" required>
+              </div>
+            </div>
             <div class="form-group" style="margin-top: 15px;">
-              <label class="form-label">Zip / Pin Code <span class="req">*</span></label>
-              <input type="text" id="pincode" class="input" placeholder="e.g. 522007" required>
+              <label class="form-label">Landmark</label>
+              <input type="text" id="landmark" class="input" placeholder="e.g. Near SBI Bank, Opposite City Mall">
             </div>
           </div>
 
+          <!-- Section 03: Geolocation -->
           <div class="form-section">
             <div class="fs-header">
-              <div class="fs-step">02</div>
+              <div class="fs-step">03</div>
               <div>
                 <div class="fs-title">Pin Exact Geolocation</div>
                 <div class="fs-sub">Drag the marker to your building entrance for accurate delivery</div>
@@ -93,7 +133,7 @@
           </div>
 
           <div class="form-submit-bar">
-            <div class="submit-note">Double-check details before proceeding</div>
+            <div class="submit-note">Double-check all details before proceeding</div>
             <div class="submit-btns">
               <a href="/my-bids" class="btn btn-outline">Cancel</a>
               <button type="submit" class="btn btn-gold">🚚 Confirm Address</button>
@@ -113,51 +153,51 @@
     document.addEventListener("DOMContentLoaded", function() {
       const defaultLat = parseFloat("{{ delivery.item_lat or 16.3067 }}");
       const defaultLng = parseFloat("{{ delivery.item_lng or 80.4365 }}");
-      
+
       const latInput = document.getElementById('latitude');
       const lngInput = document.getElementById('longitude');
       const areaInput = document.getElementById('location_name');
       const cityInput = document.getElementById('city');
       const stateInput = document.getElementById('state');
       const pinInput = document.getElementById('pincode');
-      
+
       latInput.value = defaultLat;
       lngInput.value = defaultLng;
-      
+
       const map = L.map('map-picker').setView([defaultLat, defaultLng], 13);
-      
+
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
         subdomains: 'abcd',
         maxZoom: 20
       }).addTo(map);
-      
+
       const marker = L.marker([defaultLat, defaultLng], {
         draggable: true
       }).addTo(map);
-      
+
       marker.on('dragend', function(e) {
         const position = marker.getLatLng();
         updateCoords(position.lat, position.lng);
         reverseGeocode(position.lat, position.lng);
       });
-      
+
       map.on('click', function(e) {
         marker.setLatLng(e.latlng);
         updateCoords(e.latlng.lat, e.latlng.lng);
         reverseGeocode(e.latlng.lat, e.latlng.lng);
       });
-      
+
       function updateCoords(lat, lng) {
         latInput.value = lat.toFixed(6);
         lngInput.value = lng.toFixed(6);
       }
-      
+
       document.getElementById('btn-geocode-search').addEventListener('click', function(e) {
         e.preventDefault();
         const address = areaInput.value.trim();
         if (!address) return;
-        
+
         fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
           .then(response => response.json())
           .then(data => {
@@ -176,7 +216,7 @@
             console.error("Geocoding failed:", err);
           });
       });
-      
+
       document.getElementById('btn-use-mylocation').addEventListener('click', function(e) {
         e.preventDefault();
         if (navigator.geolocation) {
@@ -194,7 +234,7 @@
           alert("Geolocation is not supported by your browser.");
         }
       });
-      
+
       let geocodeTimeout;
       function reverseGeocode(lat, lng) {
         if (geocodeTimeout) clearTimeout(geocodeTimeout);
@@ -204,45 +244,77 @@
             .then(data => {
               if (data && data.address) {
                 const parts = data.address;
-                
-                const house = parts.house_number || parts.building || '';
+
                 const road = parts.road || '';
                 const suburb = parts.suburb || parts.neighbourhood || '';
                 const city = parts.city || parts.town || parts.village || '';
                 const state = parts.state || '';
                 const postcode = parts.postcode || '';
-                
+                const country = parts.country || '';
+
                 if (road || suburb) {
                   areaInput.value = [road, suburb].filter(Boolean).join(', ');
                 }
                 if (city) cityInput.value = city;
                 if (state) stateInput.value = state;
                 if (postcode) pinInput.value = postcode;
+                if (country) document.getElementById('country').value = country;
               }
             })
             .catch(err => console.error("Reverse geocoding error:", err));
         }, 800);
       }
-      
+
+      // Mobile number — digits only
+      const mobileInput = document.getElementById('mobile');
+      mobileInput.addEventListener('input', function() {
+        this.value = this.value.replace(/\D/g, '').slice(0, 10);
+      });
+
+      // Pincode — digits only
+      pinInput.addEventListener('input', function() {
+        this.value = this.value.replace(/\D/g, '').slice(0, 6);
+      });
+
       const form = document.getElementById('address-form');
       form.addEventListener('submit', function(e) {
         e.preventDefault();
-        
+
+        const fullName = document.getElementById('full_name').value.trim();
+        const mobile = mobileInput.value.trim();
+
+        // Validate recipient
+        if (!fullName) {
+          alert("Please enter the recipient's full name.");
+          document.getElementById('full_name').focus();
+          return;
+        }
+        if (!mobile || mobile.length !== 10) {
+          alert("Please enter a valid 10-digit mobile number.");
+          mobileInput.focus();
+          return;
+        }
+
         const payload = {
+          full_name: fullName,
+          mobile: mobile,
           house_number: document.getElementById('house_number').value.trim(),
+          address_line_2: document.getElementById('address_line_2').value.trim(),
           area: areaInput.value.trim(),
           city: cityInput.value.trim(),
           state: stateInput.value.trim(),
           pincode: pinInput.value.trim(),
+          country: document.getElementById('country').value.trim(),
+          landmark: document.getElementById('landmark').value.trim(),
           latitude: parseFloat(latInput.value),
           longitude: parseFloat(lngInput.value)
         };
-        
+
         if (!payload.house_number || !payload.area || !payload.city || !payload.state || !payload.pincode || isNaN(payload.latitude)) {
-          alert("Please fill in all address details and choose a location on the map.");
+          alert("Please fill in all required address fields and choose a location on the map.");
           return;
         }
-        
+
         const deliveryId = "{{ delivery.id }}";
         fetch(`/api/delivery/${deliveryId}/address`, {
           method: 'POST',

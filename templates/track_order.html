@@ -92,14 +92,37 @@
             <h3 style="margin-top:0; margin-bottom:12px; font-family:'Playfair Display',serif; font-size:1.1rem; color:#fff;">Shipping Info</h3>
             <div style="display:flex; flex-direction:column; gap:10px; font-size:0.85rem; color:var(--text2);">
               <div><strong>Seller / Origin:</strong> <span style="color:var(--text);">{{ delivery.host_name }}</span></div>
-              <div><strong>Recipient Address:</strong>
-                <div style="color:var(--text); margin-top:4px; line-height:1.4;">
-                  {{ delivery.house_number }}, {{ delivery.area }}<br>
-                  {{ delivery.city }}, {{ delivery.state }} - {{ delivery.pincode }}
+              <div style="border-top: 1px solid var(--border2); padding-top: 10px; margin-top: 2px;">
+                <strong>Recipient:</strong>
+                <div style="color:var(--text); margin-top:4px; line-height:1.5;">
+                  {{ delivery.full_name or 'N/A' }}<br>
+                  {% if delivery.mobile %}📞 +91 {{ delivery.mobile }}{% endif %}
+                </div>
+              </div>
+              <div><strong>Delivery Address:</strong>
+                <div style="color:var(--text); margin-top:4px; line-height:1.5;">
+                  {{ delivery.house_number }}{% if delivery.address_line_2 %}, {{ delivery.address_line_2 }}{% endif %}<br>
+                  {{ delivery.area }}{% if delivery.landmark %}, Near {{ delivery.landmark }}{% endif %}<br>
+                  {{ delivery.city }}, {{ delivery.state }} - {{ delivery.pincode }}<br>
+                  {{ delivery.country or 'India' }}
+                </div>
+              </div>
+              <div id="courier-info-row" style="display:none; border-top: 1px solid var(--border2); padding-top: 10px; margin-top: 5px;">
+                <strong>Courier Info:</strong>
+                <div style="color:var(--text); margin-top:4px;">
+                  <span id="courier-name"></span> — Track #: <span id="courier-tracking" style="font-family:monospace; color:var(--gold);"></span>
+                  <div id="courier-est" style="font-size:0.75rem; color:var(--text3); margin-top:2px;"></div>
                 </div>
               </div>
               <div id="agent-info-row" style="display:none; border-top: 1px solid var(--border2); padding-top: 10px; margin-top: 5px;">
                 <strong>Assigned Agent:</strong> <span id="agent-name" style="color:var(--text);"></span>
+              </div>
+              <div id="customer-confirm-box" style="display:none; border-top: 1px solid var(--border2); padding-top: 12px; margin-top: 8px;">
+                <button id="btn-confirm-received" class="btn btn-gold btn-full" style="padding: 10px;">✅ Confirm Package Received</button>
+                <div style="font-size: 0.72rem; color: var(--text3); text-align: center; margin-top: 6px;">Order automatically closes 7 days after delivery if unconfirmed.</div>
+              </div>
+              <div id="customer-confirmed-badge" style="display:none; border-top: 1px solid var(--border2); padding-top: 10px; margin-top: 8px; color: #2ecc71; font-weight: 600; text-align: center;">
+                ✓ You confirmed delivery receipt
               </div>
             </div>
           </div>
@@ -164,6 +187,37 @@
           document.getElementById('qr-card-container').style.display = 'none';
         } else if (currentIdx === 2) {
           document.getElementById('step-delivered').classList.add('active');
+        }
+
+        if (d.courier_name && d.tracking_number) {
+          document.getElementById('courier-info-row').style.display = 'block';
+          document.getElementById('courier-name').innerText = d.courier_name;
+          document.getElementById('courier-tracking').innerText = d.tracking_number;
+          if (d.estimated_delivery) {
+            document.getElementById('courier-est').innerText = `Est. Delivery: ${d.estimated_delivery}`;
+          }
+        }
+        
+        if (d.status === 'delivered') {
+          if (d.customer_confirmed === 1) {
+            document.getElementById('customer-confirmed-badge').style.display = 'block';
+          } else {
+            const confirmBox = document.getElementById('customer-confirm-box');
+            confirmBox.style.display = 'block';
+            document.getElementById('btn-confirm-received').addEventListener('click', function() {
+              if (!confirm("Confirm that you have received this package in good condition?")) return;
+              fetch(`/api/delivery/${d.id}/confirm-received`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                  if (data.success) {
+                    confirmBox.style.display = 'none';
+                    document.getElementById('customer-confirmed-badge').style.display = 'block';
+                  } else {
+                    alert("Error: " + (data.error || "Failed to confirm."));
+                  }
+                });
+            });
+          }
         }
         
         if (d.status !== 'delivered') {

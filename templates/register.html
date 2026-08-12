@@ -123,6 +123,26 @@
         <p class="auth-sub">Create an account to start bidding and hosting auctions</p>
 
         <form method="POST" id="register-form">
+          <!-- Role Selection Option -->
+          <div class="form-group" style="margin-bottom:20px;">
+            <label class="form-label">Joining As <span class="req">*</span></label>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:6px;">
+              <label id="role-opt-user" onclick="setRoleOption('user')" style="background:var(--raised); border:2px solid var(--gold); border-radius:var(--r2); padding:12px 10px; cursor:pointer; text-align:center; transition:0.2s;">
+                <input type="radio" name="role" value="user" checked style="display:none;">
+                <div style="font-size:1.4rem; margin-bottom:2px;">🛒</div>
+                <div style="font-weight:700; font-size:0.85rem; color:#fff;">Bidder & Seller</div>
+                <div style="font-size:0.72rem; color:var(--text3); margin-top:2px;">Buy, bid & host items</div>
+              </label>
+
+              <label id="role-opt-delivery" onclick="setRoleOption('delivery_boy')" style="background:var(--raised); border:2px solid var(--border2); border-radius:var(--r2); padding:12px 10px; cursor:pointer; text-align:center; transition:0.2s;">
+                <input type="radio" name="role" value="delivery_boy" style="display:none;">
+                <div style="font-size:1.4rem; margin-bottom:2px;">🚚</div>
+                <div style="font-weight:700; font-size:0.85rem; color:#fff;">Delivery Partner</div>
+                <div style="font-size:0.72rem; color:var(--text3); margin-top:2px;">Fulfill & scan shipments</div>
+              </label>
+            </div>
+          </div>
+
           <div class="form-group">
             <label class="form-label">Username <span class="req">*</span></label>
             <div class="input-wrap">
@@ -238,6 +258,24 @@
 
   <script src="/static/js/script.js"></script>
   <script src="/static/js/dynamic_ui.js"></script>
+  <script>
+    function setRoleOption(role) {
+      const optUser = document.getElementById('role-opt-user');
+      const optDelivery = document.getElementById('role-opt-delivery');
+      
+      if (role === 'user') {
+        if (optUser) optUser.style.borderColor = 'var(--gold)';
+        if (optDelivery) optDelivery.style.borderColor = 'var(--border2)';
+        const radio = document.querySelector('input[name="role"][value="user"]');
+        if (radio) radio.checked = true;
+      } else {
+        if (optUser) optUser.style.borderColor = 'var(--border2)';
+        if (optDelivery) optDelivery.style.borderColor = 'var(--gold)';
+        const radio = document.querySelector('input[name="role"][value="delivery_boy"]');
+        if (radio) radio.checked = true;
+      }
+    }
+  </script>
 </body>
 
 </html>

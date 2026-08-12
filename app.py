@@ -3,6 +3,7 @@ import sqlite3, os, hashlib, uuid, json
 from datetime import datetime, timedelta
 from functools import wraps
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
 from authlib.integrations.flask_client import OAuth
 import stripe
 from dotenv import load_dotenv
@@ -173,11 +174,16 @@ def init_db():
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
             auction_id       INTEGER NOT NULL,
             winner_id        INTEGER NOT NULL,
+            full_name        TEXT,
+            mobile           TEXT,
             house_number     TEXT,
+            address_line_2   TEXT,
             area             TEXT,
             city             TEXT,
             state            TEXT,
             pincode          TEXT,
+            country          TEXT DEFAULT 'India',
+            landmark         TEXT,
             latitude         REAL,
             longitude        REAL,
             status           TEXT DEFAULT 'address_pending',
@@ -186,6 +192,28 @@ def init_db():
             FOREIGN KEY (auction_id) REFERENCES auctions(id),
             FOREIGN KEY (winner_id) REFERENCES users(id),
             FOREIGN KEY (delivery_boy_id) REFERENCES users(id)
+        );
+        CREATE TABLE IF NOT EXISTS notifications (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER NOT NULL,
+            type        TEXT NOT NULL,
+            title       TEXT NOT NULL,
+            message     TEXT NOT NULL,
+            reference_type TEXT,
+            reference_id   INTEGER,
+            is_read     INTEGER DEFAULT 0,
+            created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+        CREATE TABLE IF NOT EXISTS audit_logs (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER,
+            action      TEXT NOT NULL,
+            entity_type TEXT,
+            entity_id   INTEGER,
+            details     TEXT,
+            ip_address  TEXT,
+            created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     ''')
     conn.commit()
@@ -207,6 +235,17 @@ def init_db():
         ('auctions', 'longitude', 'REAL DEFAULT 80.4365'),
         ('bids', 'escrowed_amount', 'REAL DEFAULT 0.0'),
         ('bids', 'refunded', 'INTEGER DEFAULT 0'),
+        ('deliveries', 'full_name', 'TEXT'),
+        ('deliveries', 'mobile', 'TEXT'),
+        ('deliveries', 'address_line_2', 'TEXT'),
+        ('deliveries', 'country', "TEXT DEFAULT 'India'"),
+        ('deliveries', 'landmark', 'TEXT'),
+        ('deliveries', 'courier_name', 'TEXT'),
+        ('deliveries', 'tracking_number', 'TEXT'),
+        ('deliveries', 'estimated_delivery', 'TEXT'),
+        ('deliveries', 'customer_confirmed', 'INTEGER DEFAULT 0'),
+        ('deliveries', 'confirmed_at', 'TIMESTAMP'),
+        ('deliveries', 'auto_complete_after', 'TIMESTAMP'),
     ]
     for table, col, coltype in upgrades:
         try:
@@ -248,7 +287,52 @@ def init_db():
 
 
 def hash_password(p):
-    return hashlib.sha256(p.encode()).hexdigest()
+    return generate_password_hash(p)
+
+def check_password(password, stored_hash, user_id=None):
+    if not stored_hash:
+        return False
+    # Check legacy SHA-256 hash (64 hex characters)
+    if len(stored_hash) == 64 and not stored_hash.startswith(('scrypt:', 'pbkdf2:')):
+        legacy_match = hashlib.sha256(password.encode()).hexdigest() == stored_hash
+        if legacy_match and user_id:
+            try:
+                conn = get_db()
+                c = conn.cursor()
+                c.execute("UPDATE users SET password_hash=? WHERE id=?", (generate_password_hash(password), user_id))
+                conn.commit()
+                conn.close()
+            except Exception:
+                pass
+        return legacy_match
+    return check_password_hash(stored_hash, password)
+
+def create_notification(user_id, n_type, title, message, ref_type=None, ref_id=None):
+    """Insert an in-app notification for a user."""
+    try:
+        conn = get_db()
+        c = conn.cursor()
+        c.execute("""INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
+                     VALUES (?, ?, ?, ?, ?, ?)""",
+                  (user_id, n_type, title, message, ref_type, ref_id))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error creating notification: {e}")
+
+def log_audit(user_id, action, entity_type=None, entity_id=None, details=None):
+    """Record an audit log entry for security and administrative compliance."""
+    try:
+        ip = request.remote_addr if request else '127.0.0.1'
+        conn = get_db()
+        c = conn.cursor()
+        c.execute("""INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address)
+                     VALUES (?, ?, ?, ?, ?, ?)""",
+                  (user_id, action, entity_type, entity_id, details, ip))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error logging audit: {e}")
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -440,21 +524,86 @@ def _get_active_auctions(search='', sort='end_time'):
     conn.row_factory = dict_factory
     c = conn.cursor()
 
-    q = '''SELECT a.*, u.username AS host_name,
-                  (SELECT COUNT(*) FROM bids b WHERE b.auction_id=a.id) AS bid_count
-           FROM auctions a JOIN users u ON a.host_id=u.id
-           WHERE a.status='active' '''
-    params = []
-    if search:
-        q += ' AND (a.item_name LIKE ? OR a.description LIKE ?)'
-        params += [f'%{search}%', f'%{search}%']
+    base_q = '''SELECT a.*, u.username AS host_name,
+                       (SELECT COUNT(*) FROM bids b WHERE b.auction_id=a.id) AS bid_count
+                FROM auctions a JOIN users u ON a.host_id=u.id
+                WHERE a.status='active' '''
+    
+    order_clause = {'price_asc':' ORDER BY a.current_price ASC',
+                    'price_desc':' ORDER BY a.current_price DESC',
+                    'newest':' ORDER BY a.start_time DESC'}.get(sort, ' ORDER BY a.end_time ASC')
 
-    q += {'price_asc':' ORDER BY a.current_price ASC',
-          'price_desc':' ORDER BY a.current_price DESC',
-          'newest':' ORDER BY a.start_time DESC'}.get(sort, ' ORDER BY a.end_time ASC')
+    search_clean = (search or '').strip()
 
-    c.execute(q, params)
+    if not search_clean:
+        c.execute(base_q + order_clause)
+        auctions = c.fetchall()
+        conn.close()
+        return auctions
+
+    # Extract search terms
+    words = [w.strip() for w in search_clean.split() if w.strip()]
+
+    # 1. Exact / Substring search across fields
+    exact_q = base_q + ' AND (a.item_name LIKE ? OR a.description LIKE ? OR a.location_name LIKE ? OR u.username LIKE ?)'
+    exact_params = [f'%{search_clean}%'] * 4
+    c.execute(exact_q + order_clause, exact_params)
     auctions = c.fetchall()
+
+    # 2. If no exact substring match and we have multiple words, try ALL words
+    if not auctions and len(words) > 1:
+        all_clauses = []
+        all_params = []
+        for w in words:
+            all_clauses.append('(a.item_name LIKE ? OR a.description LIKE ? OR a.location_name LIKE ? OR u.username LIKE ?)')
+            p = f'%{w}%'
+            all_params.extend([p, p, p, p])
+        all_words_q = base_q + ' AND ' + ' AND '.join(all_clauses)
+        c.execute(all_words_q + order_clause, all_params)
+        auctions = c.fetchall()
+
+    # 3. If still no results, fallback to ANY word (related items search)
+    if not auctions and words:
+        any_clauses = []
+        any_params = []
+        for w in words:
+            if len(w) > 1 or len(words) == 1:
+                any_clauses.append('(a.item_name LIKE ? OR a.description LIKE ? OR a.location_name LIKE ? OR u.username LIKE ?)')
+                p = f'%{w}%'
+                any_params.extend([p, p, p, p])
+        if any_clauses:
+            any_words_q = base_q + ' AND (' + ' OR '.join(any_clauses) + ')'
+            c.execute(any_words_q + order_clause, any_params)
+            auctions = c.fetchall()
+
+    # Rank results by relevance score
+    if auctions and search_clean:
+        search_lower = search_clean.lower()
+
+        def relevance_score(auc):
+            score = 0
+            title_lower = (auc.get('item_name') or '').lower()
+            desc_lower = (auc.get('description') or '').lower()
+            loc_lower = (auc.get('location_name') or '').lower()
+
+            if search_lower in title_lower:
+                score += 100
+            if search_lower in desc_lower:
+                score += 40
+
+            for w in words:
+                wl = w.lower()
+                if wl in title_lower:
+                    score += 25
+                if wl in desc_lower:
+                    score += 10
+                if wl in loc_lower:
+                    score += 5
+
+            return score
+
+        auctions.sort(key=relevance_score, reverse=True)
+
     conn.close()
     return auctions
 
@@ -507,6 +656,11 @@ def register():
         email    = request.form.get('email','').strip()
         password = request.form.get('password','')
         confirm  = request.form.get('confirm_password','')
+        role     = request.form.get('role', 'user').strip()
+
+        if role not in ('user', 'delivery_boy'):
+            role = 'user'
+
         if not username or not email or not password:
             flash('All fields are required.', 'error')
             return render_template('register.html')
@@ -523,14 +677,19 @@ def register():
             conn.close()
             return render_template('register.html')
         c.execute('INSERT INTO users (username,email,password_hash,role,wallet_balance) VALUES (?,?,?,?,?)',
-                  (username, email, hash_password(password), 'user', 0.0))
+                  (username, email, hash_password(password), role, 0.0))
         conn.commit()
         uid = c.lastrowid
         conn.close()
         session['user_id'] = uid
         session['username'] = username
         session['profile_pic'] = None
-        session['role'] = 'user'
+        session['role'] = role
+
+        if role == 'delivery_boy':
+            flash(f'Welcome, {username}! Your Delivery Partner account is ready.', 'success')
+            return redirect('/delivery-dashboard')
+
         flash(f'Welcome, {username}!', 'success')
         return redirect('/index.html')
     return render_template('register.html')
@@ -542,8 +701,10 @@ def login():
     if 'user_id' in session:
         return redirect('/index.html')
     if request.method == 'POST':
-        username = request.form.get('username','').strip()
-        password = request.form.get('password','')
+        username   = request.form.get('username','').strip()
+        password   = request.form.get('password','')
+        login_role = request.form.get('login_role', 'user').strip()
+
         conn = get_db(); c = conn.cursor()
         c.execute('SELECT * FROM users WHERE username=?', (username,))
         user = c.fetchone()
@@ -553,14 +714,25 @@ def login():
             if u_dict.get('is_active', 1) == 0:
                 flash('Your account has been deactivated. Contact admin.', 'error')
                 return render_template('login.html')
-            if u_dict['password_hash'] == hash_password(password):
+            if check_password(password, u_dict['password_hash'], user_id=u_dict['id']):
+                user_role = u_dict.get('role', 'user')
+
+                # Role verification check for multi-role login
+                if login_role == 'delivery_boy' and user_role not in ('delivery_boy', 'admin'):
+                    flash(f'Account "{username}" is registered as a Bidder/Seller, not a Delivery Partner. Please select "Bidder & Seller" mode.', 'warning')
+                    return render_template('login.html')
+
                 session['user_id'] = u_dict['id']
                 session['username'] = u_dict['username']
                 session['profile_pic'] = u_dict.get('profile_pic')
-                session['role'] = u_dict.get('role', 'user')
+                session['role'] = user_role
+                log_audit(u_dict['id'], 'user_login', details=f"User {u_dict['username']} logged in successfully as {login_role}")
                 flash(f'Welcome back, {u_dict["username"]}!', 'success')
-                if u_dict.get('role') == 'admin':
+                
+                if user_role == 'admin':
                     return redirect('/admin')
+                elif user_role == 'delivery_boy' or login_role == 'delivery_boy':
+                    return redirect('/delivery-dashboard')
                 return redirect('/index.html')
         flash('Invalid username or password.', 'error')
     return render_template('login.html')
@@ -734,11 +906,18 @@ def auction_detail(auction_id=None):
 @app.route('/place-bid', methods=['POST'])
 @login_required
 def place_bid():
-    auction_id = request.form.get('auction_id')
-    bid_amount = request.form.get('bid_amount')
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
+              'application/json' in request.headers.get('Accept', '') or \
+              request.is_json
+
+    auction_id = request.form.get('auction_id') or (request.json.get('auction_id') if request.is_json else None)
+    bid_amount = request.form.get('bid_amount') or (request.json.get('bid_amount') if request.is_json else None)
+    
     try:
         bid_amount = float(bid_amount)
     except (TypeError, ValueError):
+        if is_ajax:
+            return jsonify({'success': False, 'error': 'invalid_amount', 'message': 'Invalid bid amount.'}), 400
         flash('Invalid bid amount.', 'error')
         return redirect('/index.html')
 
@@ -746,26 +925,44 @@ def place_bid():
     c.execute('SELECT * FROM auctions WHERE id=?', (auction_id,))
     auction = c.fetchone()
     if not auction:
+        if is_ajax:
+            conn.close()
+            return jsonify({'success': False, 'error': 'not_found', 'message': 'Auction not found.'}), 404
         flash('Auction not found.', 'error'); conn.close(); return redirect('/index.html')
     if auction['status'] != 'active':
-        flash('This auction has ended.', 'warning')
+        msg = 'This auction has ended.'
+        if is_ajax:
+            conn.close()
+            return jsonify({'success': False, 'error': 'ended', 'message': msg}), 400
+        flash(msg, 'warning')
         conn.close()
         return redirect(f'/auction_detail.html?id={auction_id}')
     if datetime.now() > datetime.strptime(auction['end_time'], '%Y-%m-%d %H:%M:%S'):
-        flash('This auction has ended.', 'warning')
+        msg = 'This auction has ended.'
+        if is_ajax:
+            conn.close()
+            return jsonify({'success': False, 'error': 'ended', 'message': msg}), 400
+        flash(msg, 'warning')
         conn.close()
         return redirect(f'/auction_detail.html?id={auction_id}')
     if auction['host_id'] == session['user_id']:
-        flash('You cannot bid on your own auction.', 'warning')
+        msg = 'You cannot bid on your own auction.'
+        if is_ajax:
+            conn.close()
+            return jsonify({'success': False, 'error': 'host_bid', 'message': msg}), 400
+        flash(msg, 'warning')
         conn.close()
         return redirect(f'/auction_detail.html?id={auction_id}')
     if bid_amount <= auction['current_price']:
-        flash(f'Bid must be higher than current bid of ₹{auction["current_price"]:.2f}.', 'error')
+        msg = f'Bid must be higher than current bid of ₹{auction["current_price"]:.2f}.'
+        if is_ajax:
+            conn.close()
+            return jsonify({'success': False, 'error': 'bid_too_low', 'message': msg, 'current_price': auction['current_price']}), 400
+        flash(msg, 'error')
         conn.close()
         return redirect(f'/auction_detail.html?id={auction_id}')
 
     # ── Escrow logic ──
-    # Check how much this bidder already has escrowed on this auction
     c.execute("SELECT SUM(escrowed_amount) as total_escrowed FROM bids WHERE auction_id=? AND bidder_id=? AND refunded=0",
               (auction_id, session['user_id']))
     row = c.fetchone()
@@ -780,12 +977,27 @@ def place_bid():
     wallet_balance = user['wallet_balance'] if user else 0.0
 
     if additional_needed > wallet_balance:
-        flash(f'Insufficient wallet balance. You need ₹{additional_needed:.2f} more (already escrowed: ₹{already_escrowed:.2f}). Current balance: ₹{wallet_balance:.2f}.', 'error')
+        shortfall = additional_needed - wallet_balance
+        msg = f'Insufficient wallet balance. You need ₹{additional_needed:.2f} more (already escrowed: ₹{already_escrowed:.2f}). Current balance: ₹{wallet_balance:.2f}.'
+        if is_ajax:
+            conn.close()
+            return jsonify({
+                'success': False,
+                'error': 'insufficient_funds',
+                'message': msg,
+                'required': round(additional_needed, 2),
+                'already_escrowed': round(already_escrowed, 2),
+                'wallet_balance': round(wallet_balance, 2),
+                'shortfall': round(shortfall, 2)
+            }), 400
+        flash(msg, 'error')
         conn.close()
         return redirect(f'/auction_detail.html?id={auction_id}')
 
     # Deduct from wallet
+    new_balance = wallet_balance
     if additional_needed > 0:
+        new_balance = wallet_balance - additional_needed
         c.execute("UPDATE users SET wallet_balance = wallet_balance - ? WHERE id=?",
                   (additional_needed, session['user_id']))
         # Record escrow transaction
@@ -799,7 +1011,16 @@ def place_bid():
     c.execute('UPDATE auctions SET current_price=? WHERE id=?', (bid_amount, auction_id))
     conn.commit()
     conn.close()
-    flash(f'Bid of ₹{bid_amount:.2f} placed! ₹{additional_needed:.2f} escrowed from wallet.', 'success')
+    
+    succ_msg = f'Bid of ₹{bid_amount:.2f} placed! ₹{additional_needed:.2f} escrowed from wallet.'
+    if is_ajax:
+        return jsonify({
+            'success': True,
+            'message': succ_msg,
+            'current_price': bid_amount,
+            'new_wallet_balance': round(new_balance, 2)
+        })
+    flash(succ_msg, 'success')
     return redirect(f'/auction_detail.html?id={auction_id}')
 
 
@@ -1892,10 +2113,10 @@ def api_my_bids():
                d.id AS delivery_id, d.status AS delivery_status
         FROM auctions a
         JOIN bids b ON a.id = b.auction_id
-        LEFT JOIN deliveries d ON a.id = d.auction_id
+        LEFT JOIN deliveries d ON a.id = d.auction_id AND d.winner_id = ?
         WHERE b.bidder_id = ?
         ORDER BY b.timestamp DESC
-    ''', (user_id, user_id)).fetchall()
+    ''', (user_id, user_id, user_id)).fetchall()
     return jsonify([dict(r) for r in rows])
 
 
@@ -1986,18 +2207,28 @@ def api_delivery_detail(delivery_id):
 @login_required
 def api_save_delivery_address(delivery_id):
     data = request.get_json() or request.form
-    house_number = data.get('house_number', '').strip()
-    area = data.get('area', '').strip()
-    city = data.get('city', '').strip()
-    state = data.get('state', '').strip()
-    pincode = data.get('pincode', '').strip()
-    
+    full_name      = data.get('full_name', '').strip()
+    mobile         = data.get('mobile', '').strip()
+    house_number   = data.get('house_number', '').strip()
+    address_line_2 = data.get('address_line_2', '').strip()
+    area           = data.get('area', '').strip()
+    city           = data.get('city', '').strip()
+    state          = data.get('state', '').strip()
+    pincode        = data.get('pincode', '').strip()
+    country        = data.get('country', 'India').strip()
+    landmark       = data.get('landmark', '').strip()
+
     try:
         latitude = float(data.get('latitude'))
         longitude = float(data.get('longitude'))
     except (TypeError, ValueError):
         return jsonify({'error': 'Invalid latitude/longitude coordinates'}), 400
 
+    # Validate required fields
+    if not full_name:
+        return jsonify({'error': 'Full name is required'}), 400
+    if not mobile or not mobile.isdigit() or len(mobile) != 10:
+        return jsonify({'error': 'A valid 10-digit mobile number is required'}), 400
     if not house_number or not area or not city or not state or not pincode:
         return jsonify({'error': 'All address fields are required'}), 400
 
@@ -2012,10 +2243,12 @@ def api_save_delivery_address(delivery_id):
         conn.close()
         return jsonify({'error': 'Unauthorized'}), 403
 
-    c.execute('''UPDATE deliveries 
-                 SET house_number=?, area=?, city=?, state=?, pincode=?, latitude=?, longitude=?, status='ready_for_dispatch', updated_at=CURRENT_TIMESTAMP
+    c.execute('''UPDATE deliveries
+                 SET full_name=?, mobile=?, house_number=?, address_line_2=?, area=?, city=?, state=?, pincode=?, country=?, landmark=?,
+                     latitude=?, longitude=?, status='ready_for_dispatch', updated_at=CURRENT_TIMESTAMP
                  WHERE id=?''',
-              (house_number, area, city, state, pincode, latitude, longitude, delivery_id))
+              (full_name, mobile, house_number, address_line_2, area, city, state, pincode, country, landmark,
+               latitude, longitude, delivery_id))
     conn.commit()
     conn.close()
     return jsonify({'success': True, 'status': 'ready_for_dispatch'})
@@ -2057,6 +2290,15 @@ def api_dispatch_delivery(delivery_id):
                  SET status='out_for_delivery', delivery_boy_id=?, updated_at=CURRENT_TIMESTAMP 
                  WHERE id=?''', (session['user_id'], delivery_id))
     conn.commit()
+
+    # Notify winner that item is on the way
+    c.execute('''SELECT d.winner_id, a.item_name FROM deliveries d JOIN auctions a ON d.auction_id = a.id WHERE d.id = ?''', (delivery_id,))
+    row = c.fetchone()
+    if row:
+        create_notification(row['winner_id'], 'delivery', 'Package Out for Delivery 🚚',
+                            f'Your won item "{row["item_name"]}" is out for delivery with our agent.',
+                            ref_type='delivery', ref_id=delivery_id)
+
     conn.close()
     return jsonify({'success': True, 'status': 'out_for_delivery'})
 
@@ -2082,12 +2324,145 @@ def api_complete_delivery(delivery_id):
         conn.close()
         return jsonify({'error': f'Cannot deliver package in status {d["status"]}'}), 400
 
+    # Auto-complete deadline: 7 days from now if customer doesn't manually confirm
+    now_dt = datetime.now()
+    auto_complete_dt = (now_dt + timedelta(days=7)).strftime('%Y-%m-%d %H:%M:%S')
+
     c.execute('''UPDATE deliveries 
-                 SET status='delivered', updated_at=CURRENT_TIMESTAMP 
-                 WHERE id=?''', (delivery_id,))
+                 SET status='delivered', auto_complete_after=?, updated_at=CURRENT_TIMESTAMP 
+                 WHERE id=?''', (auto_complete_dt, delivery_id))
     conn.commit()
+
+    # Notify winner and host
+    c.execute('''SELECT d.winner_id, a.item_name, a.host_id FROM deliveries d JOIN auctions a ON d.auction_id = a.id WHERE d.id = ?''', (delivery_id,))
+    row = c.fetchone()
+    if row:
+        create_notification(row['winner_id'], 'delivery', 'Package Delivered! 🏆',
+                            f'Your item "{row["item_name"]}" has been delivered. Please confirm receipt on your tracking page.',
+                            ref_type='delivery', ref_id=delivery_id)
+        create_notification(row['host_id'], 'delivery', 'Delivery Completed',
+                            f'Item "{row["item_name"]}" was successfully delivered to the winner.',
+                            ref_type='delivery', ref_id=delivery_id)
+
     conn.close()
     return jsonify({'success': True, 'status': 'delivered'})
+
+
+@app.route('/api/delivery/<int:delivery_id>/confirm-received', methods=['POST'])
+@login_required
+def api_confirm_received_delivery(delivery_id):
+    """Winner manually confirms receipt of package."""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT d.*, a.item_name, a.host_id FROM deliveries d JOIN auctions a ON d.auction_id = a.id WHERE d.id = ?', (delivery_id,))
+    d = c.fetchone()
+    if not d:
+        conn.close()
+        return jsonify({'error': 'Delivery record not found'}), 404
+    if d['winner_id'] != session['user_id']:
+        conn.close()
+        return jsonify({'error': 'Unauthorized'}), 403
+    if d['status'] != 'delivered':
+        conn.close()
+        return jsonify({'error': 'Order must be delivered before confirming receipt'}), 400
+
+    now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    c.execute('''UPDATE deliveries SET customer_confirmed=1, confirmed_at=? WHERE id=?''', (now_str, delivery_id))
+    conn.commit()
+
+    create_notification(d['host_id'], 'delivery', 'Customer Confirmed Delivery',
+                        f'Winner confirmed receipt of "{d["item_name"]}". The auction order is fully completed!',
+                        ref_type='delivery', ref_id=delivery_id)
+    log_audit(session['user_id'], 'delivery_confirmed', entity_type='delivery', entity_id=delivery_id, details=f"Customer confirmed delivery of {d['item_name']}")
+
+    conn.close()
+    return jsonify({'success': True, 'customer_confirmed': 1})
+
+
+@app.route('/api/delivery/<int:delivery_id>/assign-courier', methods=['POST'])
+@login_required
+def api_assign_courier(delivery_id):
+    """Admin or delivery agent assigns courier details."""
+    data = request.get_json() or request.form
+    courier_name = data.get('courier_name', '').strip()
+    tracking_number = data.get('tracking_number', '').strip()
+    estimated_delivery = data.get('estimated_delivery', '').strip()
+
+    if not courier_name or not tracking_number:
+        return jsonify({'error': 'Courier name and tracking number are required'}), 400
+
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT d.*, a.item_name FROM deliveries d JOIN auctions a ON d.auction_id = a.id WHERE d.id = ?', (delivery_id,))
+    d = c.fetchone()
+    if not d:
+        conn.close()
+        return jsonify({'error': 'Delivery record not found'}), 404
+
+    c.execute('''UPDATE deliveries SET courier_name=?, tracking_number=?, estimated_delivery=? WHERE id=?''',
+              (courier_name, tracking_number, estimated_delivery, delivery_id))
+    conn.commit()
+
+    create_notification(d['winner_id'], 'order', 'Shipment Tracking Info Added 📦',
+                        f'Courier {courier_name} assigned to your order for "{d["item_name"]}". Tracking #: {tracking_number}',
+                        ref_type='delivery', ref_id=delivery_id)
+    conn.close()
+    return jsonify({'success': True})
+
+
+# ══════════════════════════════════════════════
+#  Notification System APIs & Routes
+# ══════════════════════════════════════════════
+@app.route('/api/notifications', methods=['GET'])
+@login_required
+def api_get_notifications():
+    conn = get_db()
+    conn.row_factory = dict_factory
+    c = conn.cursor()
+    c.execute('SELECT * FROM notifications WHERE user_id=? ORDER BY created_at DESC LIMIT 30', (session['user_id'],))
+    notes = c.fetchall()
+    conn.close()
+    return jsonify(notes)
+
+
+@app.route('/api/notifications/unread-count', methods=['GET'])
+@login_required
+def api_unread_notification_count():
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT COUNT(*) FROM notifications WHERE user_id=? AND is_read=0', (session['user_id'],))
+    count = c.fetchone()[0]
+    conn.close()
+    return jsonify({'unread_count': count})
+
+
+@app.route('/api/notifications/<int:notif_id>/read', methods=['POST'])
+@login_required
+def api_mark_notification_read(notif_id):
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('UPDATE notifications SET is_read=1 WHERE id=? AND user_id=?', (notif_id, session['user_id']))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/api/notifications/read-all', methods=['POST'])
+@login_required
+def api_mark_all_notifications_read():
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('UPDATE notifications SET is_read=1 WHERE user_id=?', (session['user_id'],))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/notifications')
+@app.route('/notifications.html')
+@login_required
+def notifications_page():
+    return render_template('notifications.html')
 
 
 @app.route('/admin/user/<int:user_id>/set-role', methods=['POST'])
@@ -2107,6 +2482,7 @@ def admin_set_user_role(user_id):
         return jsonify({'error': 'User not found'}), 404
     c.execute('UPDATE users SET role=? WHERE id=?', (role, user_id))
     conn.commit(); conn.close()
+    log_audit(session['user_id'], 'admin_role_change', entity_type='user', entity_id=user_id, details=f"Changed user {user_id} role to {role}")
     return jsonify({'success': True, 'role': role})
 
 

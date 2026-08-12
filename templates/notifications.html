@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notifications — AuctionHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="/index.html" class="nav-brand">
+        <img src="https://static.vecteezy.com/system/resources/previews/022/360/251/large_2x/auction-solid-icons-simple-stock-illustration-stock-vector.jpg" alt="AuctionHub" class="nav-logo">
+        Auction<span>Hub</span>
+      </a>
+      <div class="nav-menu" id="nav-menu">
+        <a href="/active_auctions.html" class="nav-link">Auctions</a>
+        <a href="/my_bids.html" class="nav-link">Activity</a>
+        <a href="/wallet" class="nav-link">Wallet</a>
+        <a href="/notifications.html" class="nav-link active">Notifications</a>
+        <a href="/profile.html" class="nav-link">Profile</a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container dash-page" style="margin-top: 40px; max-width: 850px;">
+      <div class="page-header" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h1 class="page-title" style="margin: 0;">Notifications</h1>
+          <p class="page-sub" style="margin: 4px 0 0 0;">Stay updated on your bids, wallet transactions, and delivery tracking</p>
+        </div>
+        <button id="btn-mark-all-read" class="btn btn-outline btn-sm" style="display: flex; align-items: center; gap: 6px;">
+          ✓ Mark All as Read
+        </button>
+      </div>
+
+      <!-- Notification Category Filter Tabs -->
+      <div class="wallet-tabs" style="display: flex; gap: 10px; margin-bottom: 24px; border-bottom: 1px solid var(--border2); padding-bottom: 12px;">
+        <button class="btn btn-sm btn-gold notif-tab active" data-filter="all">All</button>
+        <button class="btn btn-sm btn-outline notif-tab" data-filter="auction">🔨 Auctions</button>
+        <button class="btn btn-sm btn-outline notif-tab" data-filter="wallet">💰 Wallet</button>
+        <button class="btn btn-sm btn-outline notif-tab" data-filter="delivery">🚚 Delivery</button>
+      </div>
+
+      <!-- Notification List Container -->
+      <div id="notif-center-list" style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="text-align: center; color: var(--text3); padding: 40px;">Loading notifications...</div>
+      </div>
+    </div>
+  </main>
+
+  <footer style="margin-top: 60px;">
+    <div class="footer-bottom">&copy; 2024 AuctionHub. All rights reserved.</div>
+  </footer>
+
+  <script src="/static/js/script.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      let allNotifications = [];
+      let currentFilter = 'all';
+
+      loadNotifications();
+
+      function loadNotifications() {
+        fetch('/api/notifications')
+          .then(res => res.json())
+          .then(notes => {
+            allNotifications = notes;
+            renderList();
+          })
+          .catch(err => {
+            console.error("Failed to load notifications:", err);
+            document.getElementById('notif-center-list').innerHTML = '<div style="color: var(--error); text-align: center; padding: 30px;">Failed to load notifications.</div>';
+          });
+      }
+
+      function renderList() {
+        const container = document.getElementById('notif-center-list');
+        const filtered = currentFilter === 'all' 
+          ? allNotifications 
+          : allNotifications.filter(n => n.type === currentFilter);
+
+        if (filtered.length === 0) {
+          container.innerHTML = `<div style="text-align: center; color: var(--text3); padding: 50px; background: var(--card); border: 1px dashed var(--border2); border-radius: var(--r3);">No notifications found for this category.</div>`;
+          return;
+        }
+
+        const icons = {
+          'auction': '🔨',
+          'wallet': '💰',
+          'order': '📦',
+          'delivery': '🚚',
+          'system': '🔔'
+        };
+
+        container.innerHTML = filtered.map(n => {
+          const isUnread = n.is_read === 0;
+          const icon = icons[n.type] || '🔔';
+          let actionLink = '';
+
+          if (n.reference_type === 'auction' && n.reference_id) {
+            actionLink = `<a href="/auction_detail.html?id=${n.reference_id}" class="btn btn-outline btn-sm" style="margin-top: 8px; font-size: 0.75rem;">View Auction →</a>`;
+          } else if (n.reference_type === 'delivery' && n.reference_id) {
+            actionLink = `<a href="/delivery/${n.reference_id}/track" class="btn btn-gold btn-sm" style="margin-top: 8px; font-size: 0.75rem;">Track Order →</a>`;
+          } else if (n.reference_type === 'transaction' || n.type === 'wallet') {
+            actionLink = `<a href="/wallet" class="btn btn-outline btn-sm" style="margin-top: 8px; font-size: 0.75rem;">View Wallet →</a>`;
+          }
+
+          return `
+            <div class="delivery-tracker-card" style="padding: 16px 20px; margin-bottom: 0; background: ${isUnread ? 'rgba(212, 175, 55, 0.06)' : 'var(--card)'}; border-left: 4px solid ${isUnread ? 'var(--gold)' : 'var(--border2)'};">
+              <div style="display: flex; gap: 16px; align-items: flex-start;">
+                <div style="font-size: 1.5rem; padding-top: 2px;">${icon}</div>
+                <div style="flex: 1;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <strong style="color: var(--text); font-size: 0.95rem;">${n.title}</strong>
+                    <span style="font-size: 0.75rem; color: var(--text3);">${new Date(n.created_at).toLocaleString()}</span>
+                  </div>
+                  <p style="margin: 0; color: var(--text2); font-size: 0.88rem; line-height: 1.4;">${n.message}</p>
+                  ${actionLink}
+                </div>
+                ${isUnread ? `<button onclick="markRead(${n.id})" class="btn btn-sm btn-outline" style="padding: 4px 8px; font-size: 0.7rem;" title="Mark as read">✓</button>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Filter Tab Clicking
+      document.querySelectorAll('.notif-tab').forEach(btn => {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.notif-tab').forEach(b => {
+            b.classList.remove('active', 'btn-gold');
+            b.classList.add('btn-outline');
+          });
+          this.classList.remove('btn-outline');
+          this.classList.add('active', 'btn-gold');
+          currentFilter = this.getAttribute('data-filter');
+          renderList();
+        });
+      });
+
+      // Mark single read
+      window.markRead = function(id) {
+        fetch(`/api/notifications/${id}/read`, { method: 'POST' })
+          .then(() => {
+            const item = allNotifications.find(n => n.id === id);
+            if (item) item.is_read = 1;
+            renderList();
+          });
+      };
+
+      // Mark all read
+      document.getElementById('btn-mark-all-read').addEventListener('click', function() {
+        fetch('/api/notifications/read-all', { method: 'POST' })
+          .then(() => {
+            allNotifications.forEach(n => n.is_read = 1);
+            renderList();
+          });
+      });
+    });
+  </script>
+</body>
+</html>

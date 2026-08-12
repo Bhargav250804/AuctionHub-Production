@@ -39,6 +39,7 @@ async function updateAuthUI() {
     try {
         const res = await fetch('/api/user/status');
         const status = await res.json();
+        window.currentUserStatus = status;
         
         const profileDropdown = document.getElementById('profile-dropdown');
         
@@ -46,9 +47,12 @@ async function updateAuthUI() {
             document.body.classList.add('user-logged-in');
             document.body.classList.remove('user-guest');
             
-            // Add admin class if admin
+            // Add role classes
             if (status.role === 'admin') {
                 document.body.classList.add('user-admin');
+            }
+            if (status.role === 'delivery_boy') {
+                document.body.classList.add('user-delivery');
             }
             
             if (profileDropdown) profileDropdown.style.display = 'block';
@@ -70,13 +74,39 @@ async function updateAuthUI() {
             if (pmName) pmName.innerText = status.username;
             
             const pmRole = document.querySelector('.pm-role');
-            if (pmRole) pmRole.innerText = status.role === 'admin' ? '🛡️ Admin' : 'Member';
+            if (pmRole) {
+                if (status.role === 'admin') pmRole.innerText = '🛡️ Admin';
+                else if (status.role === 'delivery_boy') pmRole.innerText = '🚚 Delivery Agent';
+                else pmRole.innerText = 'Member';
+            }
+
+            // Inject Delivery Dashboard link for delivery boys and admins
+            const profileMenu = document.getElementById('profile-menu');
+            if (profileMenu && (status.role === 'delivery_boy' || status.role === 'admin')) {
+                if (!document.getElementById('pm-delivery-link')) {
+                    const devLink = document.createElement('a');
+                    devLink.id = 'pm-delivery-link';
+                    devLink.href = '/delivery-dashboard';
+                    devLink.className = 'pm-item pm-item-user';
+                    devLink.innerHTML = '🚚 Delivery Dashboard';
+                    
+                    const logoutBtn = profileMenu.querySelector('.pm-logout');
+                    if (logoutBtn) {
+                        profileMenu.insertBefore(devLink, logoutBtn);
+                    } else {
+                        profileMenu.appendChild(devLink);
+                    }
+                }
+            }
             
             // Update wallet badge in navbar
             const walletBadge = document.getElementById('nav-wallet-badge');
             if (walletBadge && status.wallet_balance !== undefined) {
                 walletBadge.innerText = `₹${parseFloat(status.wallet_balance).toFixed(0)}`;
             }
+
+            // Initialize notifications UI
+            initNotificationsUI();
             
             // Toggle menu items
             document.querySelectorAll('.pm-item-auth').forEach(el => el.style.display = 'none');
@@ -93,6 +123,49 @@ async function updateAuthUI() {
     } catch (err) {
         console.error('Auth check failed:', err);
     }
+}
+
+async function initNotificationsUI() {
+    const notifBadge = document.getElementById('nav-notif-badge');
+    const notifList = document.getElementById('notif-dd-list');
+
+    if (!notifBadge) return;
+
+    async function checkNotifications() {
+        try {
+            const countRes = await fetch('/api/notifications/unread-count');
+            const countData = await countRes.json();
+            
+            if (countData.unread_count > 0) {
+                notifBadge.innerText = countData.unread_count > 99 ? '99+' : countData.unread_count;
+                notifBadge.style.display = 'inline-block';
+            } else {
+                notifBadge.style.display = 'none';
+            }
+
+            const listRes = await fetch('/api/notifications');
+            const notes = await listRes.json();
+            
+            if (notes && notes.length > 0 && notifList) {
+                const unreadNotes = notes.filter(n => n.is_read === 0).slice(0, 5);
+                const displayNotes = unreadNotes.length > 0 ? unreadNotes : notes.slice(0, 5);
+
+                notifList.innerHTML = displayNotes.map(n => `
+                    <div style="padding: 8px; border-bottom: 1px solid var(--border2); font-size: 0.8rem; background: ${n.is_read === 0 ? 'rgba(212,175,55,0.08)' : 'transparent'}; border-radius: 4px; margin-bottom: 4px;">
+                        <div style="font-weight: 600; color: var(--text);">${n.title}</div>
+                        <div style="color: var(--text2); font-size: 0.75rem; margin-top: 2px; line-height: 1.3;">${n.message}</div>
+                    </div>
+                `).join('');
+            } else if (notifList) {
+                notifList.innerHTML = '<div style="font-size: 0.8rem; color: var(--text3); text-align: center; padding: 12px;">No notifications</div>';
+            }
+        } catch (e) {
+            console.error('Notification check failed:', e);
+        }
+    }
+
+    checkNotifications();
+    setInterval(checkNotifications, 30000);
 }
 
 /* ═══════════════════════════════════════════
@@ -507,6 +580,10 @@ async function loadAuctionDetail(id) {
         const hostNotice = document.getElementById('host-notice');
         const guestNotice = document.querySelector('.guest-bid-notice');
 
+        if (bidForm) bidForm.style.display = 'none';
+        if (hostNotice) hostNotice.style.display = 'none';
+        if (guestNotice) guestNotice.style.display = 'none';
+
         if (!currentUserId) {
             if (guestNotice) guestNotice.style.display = 'flex';
         } else if (currentUserId === a.host_id) {
@@ -517,6 +594,61 @@ async function loadAuctionDetail(id) {
                 document.getElementById('form-auction-id').value = a.id;
                 document.getElementById('bid_amount').min = parseFloat(a.current_price) + 0.01;
                 document.getElementById('min-bid-val').innerText = `₹${(parseFloat(a.current_price) + 0.01).toFixed(2)}`;
+
+                if (!bidForm.dataset.listenerAttached) {
+                    bidForm.dataset.listenerAttached = 'true';
+                    bidForm.addEventListener('submit', async function(e) {
+                        e.preventDefault();
+
+                        const bidInput = document.getElementById('bid_amount');
+                        const bidAmount = parseFloat(bidInput.value);
+                        const auctionId = document.getElementById('form-auction-id').value;
+                        const currPrice = parseFloat(a.current_price || 0);
+
+                        if (isNaN(bidAmount) || bidAmount <= currPrice) {
+                            alert(`Bid amount must be greater than current bid ₹${currPrice.toFixed(2)}`);
+                            return;
+                        }
+
+                        const formData = new FormData(bidForm);
+                        try {
+                            const res = await fetch('/place-bid', {
+                                method: 'POST',
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'Accept': 'application/json'
+                                },
+                                body: formData
+                            });
+
+                            const data = await res.json();
+
+                            if (!res.ok || !data.success) {
+                                if (data.error === 'insufficient_funds' || (data.message && data.message.toLowerCase().includes('insufficient'))) {
+                                    window.showInsufficientFundsModal(
+                                        data.wallet_balance || (window.currentUserStatus ? window.currentUserStatus.wallet_balance : 0),
+                                        data.required || bidAmount,
+                                        data.shortfall || (bidAmount - ((window.currentUserStatus && window.currentUserStatus.wallet_balance) || 0))
+                                    );
+                                } else {
+                                    alert(data.message || data.error || 'Failed to place bid.');
+                                }
+                            } else {
+                                // Success! Show modal & refresh
+                                window.showBidSuccessModal(data.message || `Bid of ₹${bidAmount.toFixed(2)} placed successfully!`);
+                                if (data.new_wallet_balance !== undefined) {
+                                    if (window.currentUserStatus) window.currentUserStatus.wallet_balance = data.new_wallet_balance;
+                                    const walletBadge = document.getElementById('nav-wallet-badge');
+                                    if (walletBadge) walletBadge.innerText = `₹${parseFloat(data.new_wallet_balance).toFixed(0)}`;
+                                }
+                                loadAuctionDetail(auctionId);
+                            }
+                        } catch (err) {
+                            console.error('Bid submit error:', err);
+                            bidForm.submit();
+                        }
+                    });
+                }
             }
         }
 
@@ -1240,4 +1372,44 @@ window.approveWithdrawal = approveWithdrawal;
 window.rejectWithdrawal = rejectWithdrawal;
 window.approveDeposit = approveDeposit;
 window.rejectDeposit = rejectDeposit;
+
+/* ═══════════════════════════════════════════
+   Modal Helpers (Insufficient Funds & Success)
+   ═══════════════════════════════════════════ */
+window.showInsufficientFundsModal = function(balance, required, shortfall) {
+    const modal = document.getElementById('insufficient-funds-modal');
+    if (!modal) {
+        alert(`Insufficient funds! Required: ₹${parseFloat(required || 0).toFixed(2)}, Available: ₹${parseFloat(balance || 0).toFixed(2)}. Shortfall: ₹${parseFloat(shortfall || 0).toFixed(2)}.`);
+        window.location.href = '/wallet';
+        return;
+    }
+
+    const elBal = document.getElementById('modal-wallet-balance');
+    const elReq = document.getElementById('modal-required-amt');
+    const elShort = document.getElementById('modal-shortfall-amt');
+
+    if (elBal) elBal.innerText = `₹${parseFloat(balance || 0).toFixed(2)}`;
+    if (elReq) elReq.innerText = `₹${parseFloat(required || 0).toFixed(2)}`;
+    if (elShort) elShort.innerText = `₹${Math.max(0, parseFloat(shortfall || 0)).toFixed(2)}`;
+
+    modal.style.display = 'flex';
+};
+
+window.closeFundsModal = function() {
+    const modal = document.getElementById('insufficient-funds-modal');
+    if (modal) modal.style.display = 'none';
+};
+
+window.showBidSuccessModal = function(msg) {
+    const modal = document.getElementById('bid-success-modal');
+    if (!modal) return;
+    const elMsg = document.getElementById('modal-success-msg');
+    if (elMsg) elMsg.innerText = msg;
+    modal.style.display = 'flex';
+};
+
+window.closeSuccessModal = function() {
+    const modal = document.getElementById('bid-success-modal');
+    if (modal) modal.style.display = 'none';
+};
 

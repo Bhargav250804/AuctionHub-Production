@@ -127,8 +127,9 @@
                 </div>
                 <div class="delivery-card-address">📍 Address: ${d.house_number}, ${d.area}, ${d.city}, ${d.state} - ${d.pincode}</div>
               </div>
-              <div class="delivery-card-actions">
+              <div class="delivery-card-actions" style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
                 <a href="/delivery/scan?id=${d.id}" class="btn btn-gold btn-sm" style="background:#3498db; border-color:#3498db; color:#fff;">📷 Scan QR to Deliver</a>
+                <button onclick="assignCourier(${d.id})" class="btn btn-outline btn-sm" style="font-size:0.75rem;">📦 ${d.courier_name ? 'Edit Courier Info' : '+ Add Courier Info'}</button>
               </div>
             </div>
           `).join('');
@@ -146,6 +147,7 @@
                   <span>Amount: <strong>₹${parseFloat(d.current_price).toFixed(2)}</strong></span>
                 </div>
                 <div class="delivery-card-address">📍 Address: ${d.house_number}, ${d.area}, ${d.city}, ${d.state} - ${d.pincode}</div>
+                ${d.courier_name ? `<div style="font-size:0.8rem; color:var(--text3); margin-top:4px;">Courier: ${d.courier_name} (#${d.tracking_number})</div>` : ''}
               </div>
               <div class="delivery-card-actions">
                 <span class="badge" style="background:#2ecc71; color:#000; font-weight:700; padding:6px 14px;">COMPLETED</span>
@@ -170,6 +172,30 @@
           }
         })
         .catch(err => console.error("Error dispatching:", err));
+      };
+
+      window.assignCourier = function(id) {
+        const courier = prompt("Enter Courier / Carrier Name (e.g., BlueDart, Delhivery, India Post):");
+        if (!courier) return;
+        const tracking = prompt("Enter Tracking Number / Airway Bill No:");
+        if (!tracking) return;
+        const est = prompt("Enter Estimated Delivery Date (e.g., 3-5 Business Days):", "3-5 Business Days");
+
+        fetch(`/api/delivery/${id}/assign-courier`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ courier_name: courier, tracking_number: tracking, estimated_delivery: est })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert("Courier & tracking info updated successfully!");
+            loadShipments();
+          } else {
+            alert("Error: " + (data.error || "Failed to save courier info."));
+          }
+        })
+        .catch(err => console.error("Error assigning courier:", err));
       };
     });
   </script>
