@@ -174,10 +174,9 @@ Contributions are welcome! Follow these steps to contribute:
 
 ## 🌿 Git Branching Strategy
 
-This project maintains separated environments:
-* **`production`**: Production-ready release code. Live auto-deployment services connect to this branch.
-* **`development`**: Active feature development and testing branch. All new work is merged here first before promoting to production.
-* **`main`**: Primary repository baseline branch.
+This project maintains a clean 2-branch workflow:
+* **`production`**: Production-ready release code. Live hosting & cloud deployments connect to this branch.
+* **`development`**: Active feature development and testing branch. All new work is done here first before merging into `production`.
 
 ---
 
